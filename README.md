@@ -19,6 +19,9 @@ Open `index.html` directly in a browser. No build step, server, package manager,
 - Search and select tables from the inspector.
 - Persist the current board in browser `localStorage`.
 - Export the current schema as JSON.
+- Enter canvas-only mode to hide the top bar, inspector, and board toolbar (`F` or `Esc` to exit).
+- Zoom the canvas with `−` / `＋` controls, `Ctrl` + trackpad pinch, or a two-finger pinch gesture.
+- Export every table and relationship line on the board as a PNG image (with an SVG fallback if the browser cannot rasterize it).
 - Use the example schema as a starting point or clear the board for a blank canvas.
 
 The board is tuned for wide 16:9 screens and portrait 9:16 layouts. On narrow screens the inspector moves below the canvas and the board remains horizontally scrollable.
@@ -31,4 +34,7 @@ Short Text, Long Text, Number, Large Number, Date/Time, Date/Time Extended, Curr
 
 - `A` — add a table
 - `R` — add a relationship
+- `F` — toggle canvas-only mode
+- `+` / `-` — zoom in / out
+- `0` — reset zoom to 100%
 - `Esc` — close a modal or exit Connect mode

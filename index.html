@@ -61,6 +61,13 @@
       min-height: 580px;
     }
 
+    .app-shell.is-canvas-only { grid-template-rows: minmax(0, 1fr); min-height: 0; height: 100dvh; }
+    .app-shell.is-canvas-only .topbar,
+    .app-shell.is-canvas-only .inspector,
+    .app-shell.is-canvas-only .board-toolbar { display: none; }
+    .app-shell.is-canvas-only .main-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); height: 100%; }
+    .app-shell.is-canvas-only .board-shell { grid-column: 1; grid-row: 1; grid-template-rows: minmax(0, 1fr); height: 100%; min-height: 0; }
+
     .topbar {
       z-index: 10;
       display: grid;
@@ -147,6 +154,32 @@
     .button.danger { color: var(--danger); background: #fff7f6; border-color: #f1d3d0; }
     .button.is-active { color: #fff; background: var(--navy); border-color: var(--navy); }
     .button .button-icon { font-size: 17px; line-height: 0; font-weight: 500; }
+
+    .zoom-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      min-height: 34px;
+      padding: 2px;
+      background: #f1f6f6;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+    }
+    .zoom-control {
+      display: grid;
+      place-items: center;
+      min-width: 28px;
+      height: 28px;
+      padding: 0 6px;
+      color: var(--ink-soft);
+      background: transparent;
+      border: 0;
+      border-radius: 5px;
+      font: 11px var(--mono);
+      font-weight: 800;
+    }
+    .zoom-control:hover { color: var(--teal-dark); background: var(--white); }
+    .zoom-reset { min-width: 48px; color: var(--ink-muted); }
 
     .main-grid {
       display: grid;
@@ -262,7 +295,8 @@
     .mode-note.is-connect { color: var(--teal-dark); }
     .mode-note.is-connect::before { background: var(--coral); box-shadow: 0 0 0 4px rgba(236,125,97,.16); }
 
-    .board-scroll { position: relative; min-width: 0; min-height: 0; overflow: auto; background: #edf2f2; }
+    .board-scroll { position: relative; min-width: 0; min-height: 0; overflow: auto; background: #edf2f2; overscroll-behavior: contain; touch-action: none; }
+    .board-canvas-stage { position: relative; flex: 0 0 auto; width: 2700px; height: 1700px; }
     .board-canvas {
       position: relative;
       width: 2700px;
@@ -271,6 +305,8 @@
       background-color: #f8faf9;
       background-image: radial-gradient(circle at 1px 1px, rgba(81, 103, 112, .22) 1px, transparent 1.15px), linear-gradient(90deg, rgba(255,255,255,.18), rgba(255,255,255,.18));
       background-size: 22px 22px, 100% 100%;
+      transform-origin: 0 0;
+      will-change: transform;
     }
     .board-canvas::before { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(13,139,131,.035), transparent 34%, rgba(236,125,97,.025)); pointer-events: none; content: ""; }
     .connections { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
@@ -427,6 +463,7 @@
       .brand-mark { width: 32px; height: 32px; }
       .topbar-actions .button { min-height: 34px; padding: 0 9px; font-size: 10px; }
       .topbar-actions .button:not(.primary) { display: none; }
+      .topbar-actions .button[data-action="export-image"] { display: inline-flex; }
       .main-grid { grid-template-rows: 610px 250px; height: auto; }
       .board-shell { grid-template-rows: auto minmax(0, 1fr); height: 610px; min-height: 0; }
       .board-toolbar { align-items: center; min-height: 58px; padding: 9px 12px; }
@@ -477,6 +514,7 @@
       </div>
       <div class="topbar-actions">
         <button class="button dark" type="button" data-action="export-json" title="Download the current schema as JSON"><span class="button-icon">↓</span><span class="button-label">Export</span></button>
+        <button class="button dark" type="button" data-action="export-image" title="Download all tables and relationships as a PNG image"><span class="button-icon">▧</span><span class="button-label">Image</span></button>
         <button class="button dark" type="button" data-action="reset-demo" title="Restore the example schema">Demo</button>
         <button class="button dark" type="button" data-action="clear-board" title="Remove all tables">Clear</button>
         <button class="button primary" type="button" data-action="open-add-table"><span class="button-icon">＋</span><span class="button-label">Add table</span></button>
@@ -537,13 +575,21 @@
           </div>
           <div class="toolbar-actions">
             <span class="mode-note" id="modeNote">Canvas ready</span>
+            <div class="zoom-controls" aria-label="Canvas zoom">
+              <button class="zoom-control" type="button" data-action="zoom-out" title="Zoom out">−</button>
+              <button class="zoom-control zoom-reset" type="button" data-action="reset-zoom" id="zoomReset" title="Reset canvas zoom">100%</button>
+              <button class="zoom-control" type="button" data-action="zoom-in" title="Zoom in">＋</button>
+            </div>
             <button class="button" type="button" data-action="fit-view" title="Center the current schema on the canvas">Fit view</button>
             <button class="button" type="button" data-action="open-relationship" title="Create a relationship between two fields"><span class="button-icon">↗</span><span class="button-label">Relationship</span></button>
+            <button class="button" type="button" data-action="toggle-canvas-only" id="canvasOnlyButton" title="Show only the canvas (Esc to exit)" aria-pressed="false"><span class="button-icon">⛶</span><span class="button-label">Canvas only</span></button>
             <button class="button primary" type="button" data-action="toggle-connect" id="connectButton" title="Pick two cards, then choose their fields">Connect</button>
           </div>
         </div>
         <div class="board-scroll" id="boardScroll">
-          <div class="board-canvas" id="boardCanvas"></div>
+          <div class="board-canvas-stage" id="boardCanvasStage">
+            <div class="board-canvas" id="boardCanvas"></div>
+          </div>
         </div>
       </section>
     </main>
@@ -679,6 +725,9 @@
         { value: 'Calculated', description: 'Expression-based value' },
         { value: 'Lookup Wizard', description: 'Value selected from a list' }
       ];
+      const ZOOM_MIN = 0.4;
+      const ZOOM_MAX = 2.5;
+      const ZOOM_STEP = 0.1;
 
       const $ = (selector, root = document) => root.querySelector(selector);
       const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -733,6 +782,11 @@
       let dragState = null;
       let lastDragMoved = false;
       let toastTimer = null;
+      let canvasOnly = false;
+      let zoom = 1;
+      const activePointers = new Map();
+      let pinchState = null;
+      let touchPanState = null;
 
       function loadState() {
         try {
@@ -793,6 +847,30 @@
         const note = $('#modeNote');
         note.textContent = connectMode ? (connectSelection.length ? 'Pick the second table' : 'Pick a source table') : 'Canvas ready';
         note.classList.toggle('is-connect', connectMode);
+        updateCanvasOnlyUi();
+        updateZoomUi();
+      }
+
+      function clamp(value, minimum, maximum) {
+        return Math.min(maximum, Math.max(minimum, value));
+      }
+
+      function formatZoom(value) {
+        return `${Math.round(value * 100)}%`;
+      }
+
+      function updateCanvasOnlyUi() {
+        const shell = $('.app-shell');
+        const button = $('#canvasOnlyButton');
+        shell.classList.toggle('is-canvas-only', canvasOnly);
+        button.setAttribute('aria-pressed', String(canvasOnly));
+        button.classList.toggle('is-active', canvasOnly);
+        button.title = canvasOnly ? 'Show the workspace chrome (Esc)' : 'Show only the canvas (Esc to exit)';
+      }
+
+      function updateZoomUi() {
+        const reset = $('#zoomReset');
+        if (reset) reset.textContent = formatZoom(zoom);
       }
 
       function renderSidebar() {
@@ -851,8 +929,12 @@
         const canvas = $('#boardCanvas');
         const maxX = state.tables.reduce((max, table) => Math.max(max, Number(table.x) + 470), 0);
         const maxY = state.tables.reduce((max, table) => Math.max(max, Number(table.y) + 500), 0);
-        canvas.style.width = `${Math.max(2700, maxX)}px`;
-        canvas.style.height = `${Math.max(1700, maxY)}px`;
+        const baseWidth = Math.max(2700, maxX);
+        const baseHeight = Math.max(1700, maxY);
+        canvas.dataset.baseWidth = String(baseWidth);
+        canvas.dataset.baseHeight = String(baseHeight);
+        canvas.style.width = `${baseWidth}px`;
+        canvas.style.height = `${baseHeight}px`;
         canvas.innerHTML = `
           <svg class="connections" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
             <defs>
@@ -870,6 +952,43 @@
             </div>
           `}
         `;
+        applyZoom();
+      }
+
+      function applyZoom() {
+        const canvas = $('#boardCanvas');
+        const stage = $('#boardCanvasStage');
+        if (!canvas || !stage) return;
+        const baseWidth = Number(canvas.dataset.baseWidth || canvas.clientWidth || 2700);
+        const baseHeight = Number(canvas.dataset.baseHeight || canvas.clientHeight || 1700);
+        canvas.style.transform = `scale(${zoom})`;
+        stage.style.width = `${Math.ceil(baseWidth * zoom)}px`;
+        stage.style.height = `${Math.ceil(baseHeight * zoom)}px`;
+        updateZoomUi();
+        requestAnimationFrame(drawConnections);
+      }
+
+      function setZoom(nextZoom, anchor) {
+        const next = clamp(Number(nextZoom) || 1, ZOOM_MIN, ZOOM_MAX);
+        if (Math.abs(next - zoom) < 0.001) return;
+        const scroll = $('#boardScroll');
+        const scrollRect = scroll.getBoundingClientRect();
+        const viewportX = anchor ? anchor.clientX - scrollRect.left : scroll.clientWidth / 2;
+        const viewportY = anchor ? anchor.clientY - scrollRect.top : scroll.clientHeight / 2;
+        const canvasX = (scroll.scrollLeft + viewportX) / zoom;
+        const canvasY = (scroll.scrollTop + viewportY) / zoom;
+        zoom = next;
+        applyZoom();
+        scroll.scrollLeft = Math.max(0, canvasX * zoom - viewportX);
+        scroll.scrollTop = Math.max(0, canvasY * zoom - viewportY);
+        drawConnections();
+      }
+
+      function toggleCanvasOnly() {
+        canvasOnly = !canvasOnly;
+        updateCanvasOnlyUi();
+        requestAnimationFrame(drawConnections);
+        showToast(canvasOnly ? 'Canvas-only mode enabled · press Esc to exit' : 'Workspace chrome restored');
       }
 
       function tableCardMarkup(table) {
@@ -917,11 +1036,37 @@
         `;
       }
 
+      function getRelationGeometry(rel) {
+        const canvas = $('#boardCanvas');
+        const sourceRow = $(`.column-row[data-table-id="${cssEscape(rel.sourceTableId)}"][data-column-id="${cssEscape(rel.sourceColumnId)}"]`, canvas);
+        const targetRow = $(`.column-row[data-table-id="${cssEscape(rel.targetTableId)}"][data-column-id="${cssEscape(rel.targetColumnId)}"]`, canvas);
+        const sourceCard = $(`.table-card[data-table-id="${cssEscape(rel.sourceTableId)}"]`, canvas);
+        const targetCard = $(`.table-card[data-table-id="${cssEscape(rel.targetTableId)}"]`, canvas);
+        if (!sourceRow || !targetRow || !sourceCard || !targetCard) return null;
+
+        const canvasRect = canvas.getBoundingClientRect();
+        const scale = canvas.clientWidth ? canvasRect.width / canvas.clientWidth : 1;
+        const sourceRect = sourceRow.getBoundingClientRect();
+        const targetRect = targetRow.getBoundingClientRect();
+        const sourceCardRect = sourceCard.getBoundingClientRect();
+        const targetCardRect = targetCard.getBoundingClientRect();
+        const sourceCenter = sourceCardRect.left + sourceCardRect.width / 2;
+        const targetCenter = targetCardRect.left + targetCardRect.width / 2;
+        const leftToRight = sourceCenter <= targetCenter;
+        const toCanvasX = (value) => (value - canvasRect.left) / scale;
+        const toCanvasY = (value) => (value - canvasRect.top) / scale;
+        return {
+          sx: toCanvasX(leftToRight ? sourceRect.right : sourceRect.left),
+          tx: toCanvasX(leftToRight ? targetRect.left : targetRect.right),
+          sy: toCanvasY(sourceRect.top + sourceRect.height / 2),
+          ty: toCanvasY(targetRect.top + targetRect.height / 2)
+        };
+      }
+
       function drawConnections() {
         const canvas = $('#boardCanvas');
         const svg = $('.connections', canvas);
         if (!svg) return;
-        const canvasRect = canvas.getBoundingClientRect();
         const width = canvas.clientWidth;
         const height = canvas.clientHeight;
         svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
@@ -930,24 +1075,10 @@
         const pieces = [];
 
         state.relationships.forEach((rel) => {
-          const sourceRow = $(`.column-row[data-table-id="${cssEscape(rel.sourceTableId)}"][data-column-id="${cssEscape(rel.sourceColumnId)}"]`, canvas);
-          const targetRow = $(`.column-row[data-table-id="${cssEscape(rel.targetTableId)}"][data-column-id="${cssEscape(rel.targetColumnId)}"]`, canvas);
-          const sourceCard = $(`.table-card[data-table-id="${cssEscape(rel.sourceTableId)}"]`, canvas);
-          const targetCard = $(`.table-card[data-table-id="${cssEscape(rel.targetTableId)}"]`, canvas);
-          if (!sourceRow || !targetRow || !sourceCard || !targetCard) return;
-
-          const sourceRect = sourceRow.getBoundingClientRect();
-          const targetRect = targetRow.getBoundingClientRect();
-          const sourceCardRect = sourceCard.getBoundingClientRect();
-          const targetCardRect = targetCard.getBoundingClientRect();
-          const sourceCenter = sourceCardRect.left + sourceCardRect.width / 2;
-          const targetCenter = targetCardRect.left + targetCardRect.width / 2;
-          const leftToRight = sourceCenter <= targetCenter;
-          const sx = (leftToRight ? sourceRect.right : sourceRect.left) - canvasRect.left;
-          const tx = (leftToRight ? targetRect.left : targetRect.right) - canvasRect.left;
-          const sy = sourceRect.top + sourceRect.height / 2 - canvasRect.top;
-          const ty = targetRect.top + targetRect.height / 2 - canvasRect.top;
-          const direction = leftToRight ? 1 : -1;
+          const geometry = getRelationGeometry(rel);
+          if (!geometry) return;
+          const { sx, tx, sy, ty } = geometry;
+          const direction = sx <= tx ? 1 : -1;
           const bend = Math.max(70, Math.min(240, Math.abs(tx - sx) * .45));
           const path = `M ${sx.toFixed(1)} ${sy.toFixed(1)} C ${(sx + direction * bend).toFixed(1)} ${sy.toFixed(1)}, ${(tx - direction * bend).toFixed(1)} ${ty.toFixed(1)}, ${tx.toFixed(1)} ${ty.toFixed(1)}`;
           const highlighted = rel.id === highlightedRelationId;
@@ -1242,8 +1373,8 @@
         const card = $(`.table-card[data-table-id="${cssEscape(tableId)}"]`);
         if (!card) return;
         const scroll = $('#boardScroll');
-        const left = card.offsetLeft - Math.max(16, (scroll.clientWidth - card.offsetWidth) / 2);
-        const top = card.offsetTop - Math.max(16, (scroll.clientHeight - card.offsetHeight) / 2);
+        const left = card.offsetLeft * zoom - Math.max(16, (scroll.clientWidth - card.offsetWidth * zoom) / 2);
+        const top = card.offsetTop * zoom - Math.max(16, (scroll.clientHeight - card.offsetHeight * zoom) / 2);
         scroll.scrollTo({ left: Math.max(0, left), top: Math.max(0, top), behavior: 'smooth' });
       }
 
@@ -1256,7 +1387,9 @@
         const maxY = Math.max(...state.tables.map((table) => table.y + 400));
         const contentWidth = Math.max(1, maxX - minX);
         const contentHeight = Math.max(1, maxY - minY);
-        scroll.scrollTo({ left: Math.max(0, minX - (scroll.clientWidth - contentWidth) / 2), top: Math.max(0, minY - (scroll.clientHeight - contentHeight) / 2), behavior: 'smooth' });
+        const scaledWidth = contentWidth * zoom;
+        const scaledHeight = contentHeight * zoom;
+        scroll.scrollTo({ left: Math.max(0, minX * zoom - (scroll.clientWidth - scaledWidth) / 2), top: Math.max(0, minY * zoom - (scroll.clientHeight - scaledHeight) / 2), behavior: 'smooth' });
       }
 
       function clearBoard() {
@@ -1297,6 +1430,175 @@
         showToast('Schema JSON exported');
       }
 
+      function relativeElementRect(element, canvasRect, scale) {
+        const rect = element.getBoundingClientRect();
+        return {
+          x: (rect.left - canvasRect.left) / scale,
+          y: (rect.top - canvasRect.top) / scale,
+          width: rect.width / scale,
+          height: rect.height / scale
+        };
+      }
+
+      function getExportTableGeometry(table, canvas, canvasRect, scale) {
+        const card = $(`.table-card[data-table-id="${cssEscape(table.id)}"]`, canvas);
+        if (!card) return null;
+        const rows = $$('.column-row', card).map((row) => {
+          const column = getColumn(table.id, row.dataset.columnId);
+          if (!column) return null;
+          return {
+            column,
+            rect: relativeElementRect(row, canvasRect, scale),
+            key: relativeElementRect($('.key-toggle', row), canvasRect, scale),
+            name: relativeElementRect($('.column-name-input', row), canvasRect, scale),
+            type: relativeElementRect($('.column-type-select', row), canvasRect, scale),
+            source: $('.source-badge', row) ? relativeElementRect($('.source-badge', row), canvasRect, scale) : null,
+            sourceText: $('.source-badge', row)?.textContent || ''
+          };
+        }).filter(Boolean);
+        return {
+          table,
+          card: relativeElementRect(card, canvasRect, scale),
+          header: relativeElementRect($('.table-card__header', card), canvasRect, scale),
+          caption: relativeElementRect($('.table-caption', card), canvasRect, scale),
+          meta: relativeElementRect($('.table-meta', card), canvasRect, scale),
+          footer: relativeElementRect($('.table-card__footer', card), canvasRect, scale),
+          rows
+        };
+      }
+
+      function svgNumber(value) {
+        return Number(value || 0).toFixed(1);
+      }
+
+      function buildBoardExportSvg() {
+        const canvas = $('#boardCanvas');
+        const canvasRect = canvas.getBoundingClientRect();
+        const scale = canvas.clientWidth ? canvasRect.width / canvas.clientWidth : 1;
+        const tables = state.tables.map((table) => getExportTableGeometry(table, canvas, canvasRect, scale)).filter(Boolean);
+        if (!tables.length) return null;
+        const relations = state.relationships.map((relation) => ({ relation, geometry: getRelationGeometry(relation) })).filter((item) => item.geometry);
+        const minX = Math.min(...tables.map((item) => item.card.x));
+        const minY = Math.min(...tables.map((item) => item.card.y));
+        const maxX = Math.max(...tables.map((item) => item.card.x + item.card.width));
+        const maxY = Math.max(...tables.map((item) => item.card.y + item.card.height));
+        const padding = 44;
+        const width = Math.ceil(maxX - minX + padding * 2);
+        const height = Math.ceil(maxY - minY + padding * 2);
+        const offsetX = padding - minX;
+        const offsetY = padding - minY;
+        const parts = [
+          `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+          '<defs>',
+          '<pattern id="exportGrid" width="22" height="22" patternUnits="userSpaceOnUse"><rect width="22" height="22" fill="#f8faf9"></rect><circle cx="1" cy="1" r="1" fill="#b8c8c8" opacity=".48"></circle></pattern>',
+          '<filter id="exportShadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#122238" flood-opacity=".14"></feDropShadow></filter>',
+          '<marker id="exportArrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#6d9996"></path></marker>',
+          '</defs>',
+          `<rect width="${width}" height="${height}" fill="url(#exportGrid)"></rect>`,
+          `<g transform="translate(${svgNumber(offsetX)} ${svgNumber(offsetY)})">`
+        ];
+
+        relations.forEach(({ relation, geometry }) => {
+          const { sx, tx, sy, ty } = geometry;
+          const direction = sx <= tx ? 1 : -1;
+          const bend = Math.max(70, Math.min(240, Math.abs(tx - sx) * .45));
+          const path = `M ${svgNumber(sx)} ${svgNumber(sy)} C ${svgNumber(sx + direction * bend)} ${svgNumber(sy)}, ${svgNumber(tx - direction * bend)} ${svgNumber(ty)}, ${svgNumber(tx)} ${svgNumber(ty)}`;
+          const label = relation.label || relation.cardinality || 'related';
+          const labelText = `${label} · ${relation.cardinality || '1:N'}`;
+          const labelWidth = Math.max(70, Math.min(190, labelText.length * 6.2 + 18));
+          const labelX = (sx + tx) / 2 - labelWidth / 2;
+          const labelY = (sy + ty) / 2 - 13;
+          parts.push(`<path d="${path}" fill="none" stroke="#82a7a5" stroke-width="2.2" stroke-linecap="round" opacity=".9" marker-end="url(#exportArrow)"></path>`);
+          parts.push(`<circle cx="${svgNumber(sx)}" cy="${svgNumber(sy)}" r="4" fill="#fff" stroke="#6d9996" stroke-width="2"></circle>`);
+          parts.push(`<circle cx="${svgNumber(tx)}" cy="${svgNumber(ty)}" r="4" fill="#fff" stroke="#6d9996" stroke-width="2"></circle>`);
+          parts.push(`<rect x="${svgNumber(labelX)}" y="${svgNumber(labelY)}" width="${svgNumber(labelWidth)}" height="22" rx="6" fill="#fff" fill-opacity=".96" stroke="#d8e5e4"></rect>`);
+          parts.push(`<text x="${svgNumber((sx + tx) / 2)}" y="${svgNumber((sy + ty) / 2 + 4)}" text-anchor="middle" fill="#3c6868" font-family="Consolas, monospace" font-size="10" font-weight="700">${escapeHtml(labelText)}</text>`);
+        });
+
+        tables.forEach(({ table, card, caption, meta, footer, rows }) => {
+          const cardX = card.x;
+          const cardY = card.y;
+          const relationCount = state.relationships.filter((rel) => rel.sourceTableId === table.id || rel.targetTableId === table.id).length;
+          const primaryCount = table.columns.filter((column) => column.primary).length;
+          const cardColor = escapeAttr(table.color || COLORS[0]);
+          parts.push(`<g transform="translate(${svgNumber(cardX)} ${svgNumber(cardY)})">`);
+          parts.push(`<rect width="${svgNumber(card.width)}" height="${svgNumber(card.height)}" rx="16" fill="#fff" stroke="#ccdadd" filter="url(#exportShadow)"></rect>`);
+          parts.push(`<rect width="${svgNumber(card.width)}" height="4" rx="2" fill="${cardColor}"></rect>`);
+          parts.push(`<circle cx="23" cy="31" r="5" fill="${cardColor}"></circle>`);
+          parts.push(`<text x="39" y="36" fill="#162235" font-family="Avenir Next, Segoe UI, sans-serif" font-size="16" font-weight="800">${escapeHtml(table.name)}</text>`);
+          parts.push(`<text x="${svgNumber(caption.x - cardX)}" y="${svgNumber(caption.y - cardY + caption.height * .82)}" fill="#738096" font-family="Consolas, monospace" font-size="9" letter-spacing=".8">ACCESS TABLE · ${relationCount ? `${relationCount} RELATIONSHIP${relationCount === 1 ? '' : 'S'}` : 'UNLINKED'}</text>`);
+          parts.push(`<text x="14" y="${svgNumber(meta.y - cardY + 17)}" fill="#738096" font-family="Consolas, monospace" font-size="9">${table.columns.length} FIELD${table.columns.length === 1 ? '' : 'S'}</text>`);
+          parts.push(`<text x="${svgNumber(card.width - 14)}" y="${svgNumber(meta.y - cardY + 17)}" text-anchor="end" fill="#076c67" font-family="Consolas, monospace" font-size="9">${primaryCount} PRIMARY KEY${primaryCount === 1 ? '' : 'S'}</text>`);
+
+          rows.forEach(({ column, rect, key, name, type, source, sourceText }) => {
+            const rowY = rect.y - cardY;
+            parts.push(`<rect x="8" y="${svgNumber(rowY)}" width="${svgNumber(card.width - 16)}" height="${svgNumber(rect.height)}" fill="#fff" stroke="#edf1f1"></rect>`);
+            parts.push(`<rect x="${svgNumber(key.x - cardX)}" y="${svgNumber(key.y - cardY)}" width="${svgNumber(key.width)}" height="${svgNumber(key.height)}" rx="5" fill="${column.primary ? '#fff7df' : '#f5f7f8'}" stroke="${column.primary ? '#efdca3' : '#e3e9ea'}"></rect>`);
+            parts.push(`<text x="${svgNumber(key.x - cardX + key.width / 2)}" y="${svgNumber(key.y - cardY + key.height * .68)}" text-anchor="middle" fill="${column.primary ? '#996816' : '#a6b2bd'}" font-family="Consolas, monospace" font-size="9" font-weight="800">${column.primary ? 'PK' : '·'}</text>`);
+            parts.push(`<text x="${svgNumber(name.x - cardX + 2)}" y="${svgNumber(name.y - cardY + name.height * .72)}" fill="#42516a" font-family="Consolas, monospace" font-size="11" font-weight="700">${escapeHtml(column.name)}</text>`);
+            parts.push(`<text x="${svgNumber(type.x - cardX + 4)}" y="${svgNumber(type.y - cardY + type.height * .7)}" fill="#738096" font-family="Segoe UI, sans-serif" font-size="10">${escapeHtml(column.type)}</text>`);
+            if (source) parts.push(`<text x="${svgNumber(name.x - cardX + 2)}" y="${svgNumber(source.y - cardY + source.height * .85)}" fill="#076c67" font-family="Consolas, monospace" font-size="9">${escapeHtml(sourceText)}</text>`);
+          });
+
+          const footerY = footer.y - cardY;
+          parts.push(`<rect x="0" y="${svgNumber(footerY)}" width="${svgNumber(card.width)}" height="${svgNumber(footer.height)}" fill="#fbfcfc"></rect>`);
+          parts.push(`<line x1="0" y1="${svgNumber(footerY)}" x2="${svgNumber(card.width)}" y2="${svgNumber(footerY)}" stroke="#edf1f1"></line>`);
+          parts.push(`<text x="14" y="${svgNumber(footerY + footer.height * .62)}" fill="#738096" font-family="Segoe UI, sans-serif" font-size="10" font-weight="800">＋ Add field</text>`);
+          parts.push(`<text x="${svgNumber(card.width - 14)}" y="${svgNumber(footerY + footer.height * .62)}" text-anchor="end" fill="#738096" font-family="Segoe UI, sans-serif" font-size="10" font-weight="800">↳ Import fields</text>`);
+          parts.push('</g>');
+        });
+
+        parts.push('</g></svg>');
+        return parts.join('');
+      }
+
+      function downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      function exportImage() {
+        const svg = buildBoardExportSvg();
+        if (!svg) { showToast('Add at least one table before exporting an image', true); return; }
+        const svgBlob = new Blob([svg], { type: 'image/svg+xml' });
+        const svgUrl = URL.createObjectURL(svgBlob);
+        const image = new Image();
+        image.onload = () => {
+          const sourceWidth = image.naturalWidth || image.width;
+          const sourceHeight = image.naturalHeight || image.height;
+          const outputScale = Math.min(2, 10000 / Math.max(sourceWidth, sourceHeight));
+          const output = document.createElement('canvas');
+          output.width = Math.max(1, Math.round(sourceWidth * outputScale));
+          output.height = Math.max(1, Math.round(sourceHeight * outputScale));
+          const context = output.getContext('2d');
+          context.fillStyle = '#f8faf9';
+          context.fillRect(0, 0, output.width, output.height);
+          context.drawImage(image, 0, 0, output.width, output.height);
+          URL.revokeObjectURL(svgUrl);
+          output.toBlob((blob) => {
+            if (blob) {
+              downloadBlob(blob, 'schema-studio-board.png');
+              showToast('Board image exported');
+            } else {
+              downloadBlob(svgBlob, 'schema-studio-board.svg');
+              showToast('PNG rendering unavailable; SVG image exported');
+            }
+          }, 'image/png');
+        };
+        image.onerror = () => {
+          URL.revokeObjectURL(svgUrl);
+          downloadBlob(svgBlob, 'schema-studio-board.svg');
+          showToast('PNG rendering unavailable; SVG image exported');
+        };
+        image.src = svgUrl;
+      }
+
       function handleAction(action, element) {
         const tableId = element.dataset.tableId;
         switch (action) {
@@ -1321,15 +1623,20 @@
           case 'toggle-connect': toggleConnectMode(); break;
           case 'delete-relationship': deleteRelationship(element.dataset.relationId); break;
           case 'fit-view': fitView(); break;
+          case 'zoom-in': setZoom(zoom + ZOOM_STEP); break;
+          case 'zoom-out': setZoom(zoom - ZOOM_STEP); break;
+          case 'reset-zoom': setZoom(1); break;
+          case 'toggle-canvas-only': toggleCanvasOnly(); break;
           case 'clear-board': clearBoard(); break;
           case 'reset-demo': resetDemo(); break;
           case 'export-json': exportJson(); break;
+          case 'export-image': exportImage(); break;
           default: break;
         }
       }
 
       function startDrag(event, card) {
-        if (connectMode || event.target.closest('input, select, button')) return;
+        if (connectMode || (event.pointerType !== 'mouse' && activePointers.size) || event.target.closest('input, select, button')) return;
         const table = getTable(card.dataset.tableId);
         if (!table) return;
         event.preventDefault();
@@ -1366,6 +1673,69 @@
         dragState = null;
       }
 
+      function cancelDrag() {
+        if (!dragState) return;
+        dragState.card.classList.remove('is-dragging');
+        dragState = null;
+        lastDragMoved = false;
+      }
+
+      function pointerDistance(first, second) {
+        return Math.hypot(second.x - first.x, second.y - first.y);
+      }
+
+      function pointerCenter(first, second) {
+        return { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
+      }
+
+      function trackCanvasPointerDown(event) {
+        if (event.pointerType === 'mouse') return;
+        activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        const scroll = $('#boardScroll');
+        if (activePointers.size === 1) {
+          const isInteractive = event.target.closest('input, select, button, [data-drag-handle]');
+          touchPanState = isInteractive ? null : { x: event.clientX, y: event.clientY, left: scroll.scrollLeft, top: scroll.scrollTop };
+        }
+        if (activePointers.size === 2) {
+          const points = Array.from(activePointers.values());
+          const center = pointerCenter(points[0], points[1]);
+          pinchState = { startDistance: Math.max(1, pointerDistance(points[0], points[1])), startZoom: zoom };
+          touchPanState = null;
+          cancelDrag();
+          activePointers.forEach((point, pointerId) => {
+            try { scroll.setPointerCapture(pointerId); } catch (error) { /* capture is optional */ }
+          });
+          event.preventDefault();
+          if (center.x || center.y) drawConnections();
+        }
+      }
+
+      function trackCanvasPointerMove(event) {
+        if (event.pointerType === 'mouse' || !activePointers.has(event.pointerId)) return;
+        activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        const scroll = $('#boardScroll');
+        if (pinchState && activePointers.size >= 2) {
+          const points = Array.from(activePointers.values());
+          const center = pointerCenter(points[0], points[1]);
+          const distance = Math.max(1, pointerDistance(points[0], points[1]));
+          setZoom(pinchState.startZoom * distance / pinchState.startDistance, center);
+          event.preventDefault();
+          return;
+        }
+        if (touchPanState && activePointers.size === 1 && !dragState) {
+          scroll.scrollLeft = touchPanState.left - (event.clientX - touchPanState.x);
+          scroll.scrollTop = touchPanState.top - (event.clientY - touchPanState.y);
+          event.preventDefault();
+        }
+      }
+
+      function trackCanvasPointerEnd(event) {
+        if (event.pointerType === 'mouse') return;
+        activePointers.delete(event.pointerId);
+        if (activePointers.size < 2) pinchState = null;
+        if (!activePointers.size) touchPanState = null;
+      }
+
       $('#boardCanvas').addEventListener('pointerdown', (event) => {
         const handle = event.target.closest('[data-drag-handle]');
         const card = event.target.closest('.table-card');
@@ -1374,6 +1744,15 @@
       $('#boardCanvas').addEventListener('pointermove', moveDrag);
       $('#boardCanvas').addEventListener('pointerup', endDrag);
       $('#boardCanvas').addEventListener('pointercancel', endDrag);
+      $('#boardScroll').addEventListener('pointerdown', trackCanvasPointerDown, { passive: false });
+      $('#boardScroll').addEventListener('pointermove', trackCanvasPointerMove, { passive: false });
+      $('#boardScroll').addEventListener('pointerup', trackCanvasPointerEnd);
+      $('#boardScroll').addEventListener('pointercancel', trackCanvasPointerEnd);
+      $('#boardScroll').addEventListener('wheel', (event) => {
+        if (!event.ctrlKey) return;
+        event.preventDefault();
+        setZoom(zoom * Math.exp(-event.deltaY * 0.0025), event);
+      }, { passive: false });
 
       document.addEventListener('click', (event) => {
         const swatch = event.target.closest('.swatch');
@@ -1457,10 +1836,15 @@
         if (event.key === 'Escape') {
           if ($$('.modal-backdrop:not([hidden])').length) closeModals();
           else if (connectMode) toggleConnectMode();
+          else if (canvasOnly) toggleCanvasOnly();
         }
         if (event.target.matches('input, textarea, select')) return;
         if (event.key.toLowerCase() === 'a') openAddTableModal();
         if (event.key.toLowerCase() === 'r') openRelationshipModal();
+        if (event.key.toLowerCase() === 'f') toggleCanvasOnly();
+        if (event.key === '+' || event.key === '=') setZoom(zoom + ZOOM_STEP);
+        if (event.key === '-') setZoom(zoom - ZOOM_STEP);
+        if (event.key === '0') setZoom(1);
       });
       window.addEventListener('resize', drawConnections);
       window.addEventListener('scroll', drawConnections, true);
