@@ -1,0 +1,1473 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#122238">
+  <title>Schema Studio — Access database planner</title>
+  <style>
+    :root {
+      --ink: #162235;
+      --ink-soft: #42516a;
+      --ink-muted: #738096;
+      --navy: #122238;
+      --navy-2: #1b2f49;
+      --paper: #f8fafb;
+      --paper-2: #eef3f4;
+      --white: #ffffff;
+      --line: #dbe4e5;
+      --line-strong: #c5d2d5;
+      --teal: #0d8b83;
+      --teal-dark: #076c67;
+      --teal-pale: #d9f2ef;
+      --coral: #ec7d61;
+      --gold: #c9923b;
+      --danger: #c34e53;
+      --shadow-card: 0 18px 35px rgba(18, 34, 56, 0.11), 0 2px 6px rgba(18, 34, 56, 0.07);
+      --shadow-float: 0 18px 40px rgba(18, 34, 56, 0.16), 0 3px 12px rgba(18, 34, 56, 0.1);
+      --radius-lg: 16px;
+      --radius-md: 10px;
+      --radius-sm: 7px;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --sans: "Avenir Next", Avenir, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { width: 100%; height: 100%; }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      color: var(--ink);
+      background: var(--navy);
+      font-family: var(--sans);
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
+      outline: 3px solid rgba(13, 139, 131, 0.28);
+      outline-offset: 2px;
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-rows: 76px minmax(0, 1fr);
+      width: 100%;
+      height: 100dvh;
+      min-height: 580px;
+    }
+
+    .topbar {
+      z-index: 10;
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) auto minmax(220px, 1fr);
+      align-items: center;
+      gap: 20px;
+      padding: 0 24px;
+      color: #f7fbfb;
+      background: var(--navy);
+      border-bottom: 1px solid rgba(220, 239, 236, 0.1);
+    }
+
+    .brand-lockup, .project-lockup, .topbar-actions, .toolbar-actions, .toolbar-title, .card-actions, .table-meta, .field-inline, .modal-actions, .selection-actions {
+      display: flex;
+      align-items: center;
+    }
+
+    .brand-lockup { gap: 12px; min-width: 0; }
+
+    .brand-mark {
+      position: relative;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      width: 36px;
+      height: 36px;
+      overflow: hidden;
+      color: #fff;
+      background: var(--teal);
+      border-radius: 10px;
+      box-shadow: 0 7px 18px rgba(13, 139, 131, 0.3);
+    }
+
+    .brand-mark::before, .brand-mark::after {
+      position: absolute;
+      width: 13px;
+      height: 13px;
+      border: 2px solid rgba(255,255,255,.88);
+      border-radius: 3px;
+      content: "";
+    }
+    .brand-mark::before { transform: translate(-4px, -4px); }
+    .brand-mark::after { transform: translate(4px, 4px); opacity: .72; }
+    .brand-mark span { position: relative; z-index: 1; width: 4px; height: 4px; background: #fff; border-radius: 50%; }
+
+    .brand-copy { min-width: 0; }
+    .brand-copy strong { display: block; font-size: 13px; letter-spacing: .02em; }
+    .brand-copy span { display: block; margin-top: 3px; color: #9eb1c4; font: 10px var(--mono); letter-spacing: .11em; text-transform: uppercase; }
+
+    .project-lockup { justify-self: center; gap: 10px; min-width: 0; }
+    .project-lockup::before { width: 1px; height: 30px; background: rgba(220, 239, 236, 0.16); content: ""; }
+    .project-label { min-width: 0; }
+    .project-label small { display: block; color: #8fa5b8; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+    .project-label strong { display: block; overflow: hidden; max-width: 250px; margin-top: 3px; color: #fff; font-size: 14px; white-space: nowrap; text-overflow: ellipsis; }
+    .save-state { color: #84d0c7; font-size: 11px; white-space: nowrap; }
+
+    .topbar-actions { justify-content: flex-end; gap: 8px; }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 0 13px;
+      color: var(--ink-soft);
+      background: var(--white);
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius-sm);
+      box-shadow: 0 2px 5px rgba(18, 34, 56, .05);
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: .01em;
+      transition: transform .16s ease, border-color .16s ease, background .16s ease, color .16s ease, box-shadow .16s ease;
+    }
+    .button:hover { transform: translateY(-1px); border-color: #a9bfc1; box-shadow: 0 5px 11px rgba(18, 34, 56, .09); }
+    .button:active { transform: translateY(0); }
+    .button.primary { color: #fff; background: var(--teal); border-color: var(--teal); box-shadow: 0 6px 13px rgba(13, 139, 131, .23); }
+    .button.primary:hover { background: var(--teal-dark); border-color: var(--teal-dark); }
+    .button.dark { color: #edf7f6; background: var(--navy-2); border-color: rgba(225, 241, 240, .13); box-shadow: none; }
+    .button.dark:hover { background: #27405f; border-color: rgba(225, 241, 240, .25); }
+    .button.quiet { color: var(--ink-muted); background: transparent; border-color: transparent; box-shadow: none; }
+    .button.quiet:hover { color: var(--ink); background: var(--paper-2); border-color: transparent; }
+    .button.danger { color: var(--danger); background: #fff7f6; border-color: #f1d3d0; }
+    .button.is-active { color: #fff; background: var(--navy); border-color: var(--navy); }
+    .button .button-icon { font-size: 17px; line-height: 0; font-weight: 500; }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 286px minmax(0, 1fr);
+      min-height: 0;
+      background: var(--paper-2);
+    }
+
+    .inspector {
+      z-index: 4;
+      min-width: 0;
+      overflow: auto;
+      background: #f6f9f9;
+      border-right: 1px solid var(--line);
+    }
+
+    .inspector-inner { padding: 22px 18px 28px; }
+    .eyebrow, .section-label { color: var(--ink-muted); font: 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .section-label { margin-bottom: 10px; }
+    .inspector-section { margin-bottom: 26px; }
+
+    .search-box { position: relative; }
+    .search-box input {
+      width: 100%;
+      height: 38px;
+      padding: 0 12px 0 34px;
+      color: var(--ink);
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+    }
+    .search-box input::placeholder { color: #a1adba; }
+    .search-icon { position: absolute; top: 10px; left: 12px; color: var(--ink-muted); font-size: 14px; pointer-events: none; }
+
+    .stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+    .stat-tile { padding: 11px 9px 10px; background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-sm); }
+    .stat-tile strong { display: block; color: var(--ink); font-size: 18px; line-height: 1; }
+    .stat-tile span { display: block; margin-top: 6px; color: var(--ink-muted); font: 9px var(--mono); letter-spacing: .05em; text-transform: uppercase; }
+
+    .table-index { display: grid; gap: 4px; }
+    .table-index-empty { padding: 12px 0; color: var(--ink-muted); font-size: 12px; line-height: 1.5; }
+    .table-index-item {
+      display: grid;
+      grid-template-columns: 9px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 9px;
+      width: 100%;
+      min-height: 38px;
+      padding: 0 9px;
+      color: var(--ink-soft);
+      text-align: left;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 7px;
+    }
+    .table-index-item:hover { background: var(--white); border-color: var(--line); }
+    .table-index-item.is-selected { color: var(--teal-dark); background: var(--teal-pale); border-color: #b7e2de; }
+    .table-dot { width: 8px; height: 8px; background: var(--table-accent, var(--teal)); border-radius: 50%; box-shadow: 0 0 0 3px color-mix(in srgb, var(--table-accent, var(--teal)) 15%, transparent); }
+    .table-index-name { overflow: hidden; font-size: 12px; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
+    .table-index-count { color: var(--ink-muted); font: 10px var(--mono); }
+
+    .selection-card { padding: 14px; background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-md); }
+    .selection-card h3 { margin: 5px 0 5px; color: var(--ink); font-size: 18px; letter-spacing: -.02em; }
+    .selection-card p { margin: 0; color: var(--ink-muted); font-size: 11px; line-height: 1.5; }
+    .selection-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 11px 0 13px; }
+    .mini-chip { display: inline-flex; align-items: center; min-height: 22px; padding: 0 7px; color: var(--ink-soft); background: var(--paper-2); border-radius: 5px; font: 10px var(--mono); }
+    .mini-chip.teal { color: var(--teal-dark); background: var(--teal-pale); }
+    .selection-actions { gap: 6px; }
+    .selection-actions .button { min-height: 30px; padding: 0 8px; font-size: 10px; }
+
+    .relation-list { display: grid; gap: 6px; }
+    .relation-empty { color: var(--ink-muted); font-size: 11px; line-height: 1.55; }
+    .relation-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 25px;
+      gap: 6px;
+      align-items: center;
+      padding: 9px 8px;
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      transition: border-color .16s ease, background .16s ease;
+    }
+    .relation-item:hover, .relation-item.is-highlighted { background: #f0f9f7; border-color: #9dd3cd; }
+    .relation-route { min-width: 0; color: var(--ink-soft); font-size: 10px; line-height: 1.4; }
+    .relation-route strong { display: block; overflow: hidden; color: var(--ink); font-size: 10px; white-space: nowrap; text-overflow: ellipsis; }
+    .relation-route span { color: var(--ink-muted); font-family: var(--mono); }
+    .relation-cardinality { color: var(--teal-dark); font-weight: 800; }
+    .relation-delete { display: grid; place-items: center; width: 25px; height: 25px; color: var(--ink-muted); background: transparent; border: 0; border-radius: 5px; }
+    .relation-delete:hover { color: var(--danger); background: #fff1f0; }
+
+    .type-reference { overflow: hidden; background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-md); }
+    .type-reference summary { padding: 12px 13px; color: var(--ink); cursor: pointer; font-size: 12px; font-weight: 800; list-style: none; }
+    .type-reference summary::-webkit-details-marker { display: none; }
+    .type-reference summary::after { float: right; color: var(--ink-muted); content: "+"; font-size: 16px; line-height: 12px; }
+    .type-reference[open] summary::after { content: "−"; }
+    .type-reference-list { display: grid; gap: 7px; padding: 0 13px 13px; }
+    .type-reference-item { display: grid; grid-template-columns: 9px minmax(0,1fr); gap: 8px; color: var(--ink-muted); font-size: 10px; line-height: 1.35; }
+    .type-reference-item::before { width: 5px; height: 5px; margin-top: 4px; background: var(--teal); border-radius: 50%; content: ""; }
+    .type-reference-item strong { display: block; color: var(--ink-soft); font-size: 10px; }
+
+    .board-shell { display: grid; grid-template-rows: 64px minmax(0, 1fr); min-width: 0; min-height: 0; background: #e9eff0; }
+    .board-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 0 22px; background: rgba(248, 250, 251, .96); border-bottom: 1px solid var(--line); }
+    .toolbar-title { gap: 11px; min-width: 0; }
+    .toolbar-title h1 { margin: 0; color: var(--ink); font-size: 16px; letter-spacing: -.025em; }
+    .toolbar-title p { margin: 3px 0 0; color: var(--ink-muted); font-size: 11px; }
+    .toolbar-title .canvas-mark { display: grid; place-items: center; width: 32px; height: 32px; color: var(--teal-dark); background: var(--teal-pale); border: 1px solid #b8e0dc; border-radius: 8px; font-size: 17px; }
+    .toolbar-actions { gap: 7px; flex: 0 0 auto; }
+    .toolbar-actions .button { min-height: 34px; padding: 0 10px; font-size: 11px; }
+    .toolbar-actions .button.primary { min-width: 108px; }
+    .mode-note { display: inline-flex; align-items: center; gap: 6px; margin-right: 4px; color: var(--ink-muted); font: 10px var(--mono); white-space: nowrap; }
+    .mode-note::before { width: 6px; height: 6px; background: var(--teal); border-radius: 50%; content: ""; }
+    .mode-note.is-connect { color: var(--teal-dark); }
+    .mode-note.is-connect::before { background: var(--coral); box-shadow: 0 0 0 4px rgba(236,125,97,.16); }
+
+    .board-scroll { position: relative; min-width: 0; min-height: 0; overflow: auto; background: #edf2f2; }
+    .board-canvas {
+      position: relative;
+      width: 2700px;
+      height: 1700px;
+      overflow: hidden;
+      background-color: #f8faf9;
+      background-image: radial-gradient(circle at 1px 1px, rgba(81, 103, 112, .22) 1px, transparent 1.15px), linear-gradient(90deg, rgba(255,255,255,.18), rgba(255,255,255,.18));
+      background-size: 22px 22px, 100% 100%;
+    }
+    .board-canvas::before { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(13,139,131,.035), transparent 34%, rgba(236,125,97,.025)); pointer-events: none; content: ""; }
+    .connections { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+    .connection-path { fill: none; stroke: #82a7a5; stroke-width: 2.2; stroke-linecap: round; opacity: .85; marker-end: url(#arrowhead); transition: stroke .16s ease, stroke-width .16s ease, opacity .16s ease; }
+    .connection-path.is-highlighted { stroke: var(--coral); stroke-width: 3.4; opacity: 1; marker-end: url(#arrowhead-highlight); }
+    .connection-node { fill: #fff; stroke: #6d9996; stroke-width: 2; }
+    .connection-node.is-highlighted { stroke: var(--coral); }
+    .connection-label-bg { fill: rgba(255,255,255,.96); stroke: #d8e5e4; stroke-width: 1; }
+    .connection-label-text { fill: #3c6868; font: 700 10px var(--mono); letter-spacing: .02em; }
+    .connection-label-text.is-highlighted { fill: #a94e3e; }
+
+    .table-card {
+      position: absolute;
+      z-index: 2;
+      width: 390px;
+      overflow: hidden;
+      background: rgba(255,255,255,.98);
+      border: 1px solid #ccdadd;
+      border-top: 4px solid var(--table-accent, var(--teal));
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      transition: opacity .18s ease, box-shadow .18s ease, transform .18s ease, border-color .18s ease;
+    }
+    .table-card:hover { box-shadow: var(--shadow-float); }
+    .table-card.is-selected { border-color: #80bbb6; box-shadow: 0 0 0 3px rgba(13,139,131,.16), var(--shadow-float); }
+    .table-card.is-dragging { z-index: 8; cursor: grabbing; box-shadow: 0 24px 48px rgba(18,34,56,.22); transition: none; }
+    .table-card.is-dimmed { opacity: .22; filter: saturate(.35); }
+    .table-card.is-connect-source { box-shadow: 0 0 0 4px rgba(236,125,97,.3), var(--shadow-float); }
+    .table-card.is-connect-target { box-shadow: 0 0 0 4px rgba(13,139,131,.25), var(--shadow-float); }
+    .table-card.connectable { cursor: crosshair; }
+
+    .table-card__header { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: start; gap: 10px; padding: 14px 14px 11px; cursor: grab; }
+    .table-card__identity { min-width: 0; }
+    .table-card__identity-line { display: flex; align-items: center; gap: 8px; }
+    .table-card__identity-line .table-dot { flex: 0 0 auto; width: 9px; height: 9px; }
+    .table-name-input { width: 100%; min-width: 0; padding: 0; overflow: hidden; color: var(--ink); background: transparent; border: 0; font-size: 16px; font-weight: 800; letter-spacing: -.025em; text-overflow: ellipsis; }
+    .table-name-input:focus { outline: 0; }
+    .table-name-input:focus-visible { outline: 2px solid rgba(13,139,131,.3); outline-offset: 3px; border-radius: 3px; }
+    .table-caption { margin-top: 5px; color: var(--ink-muted); font: 10px var(--mono); letter-spacing: .04em; text-transform: uppercase; }
+    .card-actions { gap: 3px; padding-top: 1px; }
+    .icon-button { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; color: var(--ink-muted); background: transparent; border: 1px solid transparent; border-radius: 6px; font-size: 15px; line-height: 1; }
+    .icon-button:hover { color: var(--ink); background: var(--paper-2); border-color: var(--line); }
+    .icon-button.danger:hover { color: var(--danger); background: #fff1f0; border-color: #f2d2cf; }
+
+    .table-meta { justify-content: space-between; gap: 10px; padding: 0 14px 10px; color: var(--ink-muted); font: 9px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .table-meta .primary-count { color: var(--teal-dark); }
+    .column-list { padding: 0 8px; border-top: 1px solid #edf1f1; }
+    .column-row { position: relative; display: grid; grid-template-columns: 29px minmax(0, 1fr) 118px 24px; align-items: center; gap: 7px; min-height: 48px; padding: 6px 6px; border-bottom: 1px solid #edf1f1; }
+    .column-row:last-child { border-bottom: 0; }
+    .column-row:hover { background: #f7fbfb; }
+    .column-row::before, .column-row::after { position: absolute; top: 50%; width: 7px; height: 7px; background: #fff; border: 2px solid #bdd0cf; border-radius: 50%; opacity: 0; content: ""; transform: translateY(-50%); transition: opacity .15s ease, border-color .15s ease; }
+    .column-row::before { left: -5px; }
+    .column-row::after { right: -5px; }
+    .column-row.is-linked::before, .column-row.is-linked::after, .table-card:hover .column-row::before, .table-card:hover .column-row::after { opacity: 1; }
+    .column-row.is-linked::before, .column-row.is-linked::after { border-color: #6d9996; }
+    .key-toggle { display: grid; place-items: center; width: 28px; height: 25px; padding: 0; color: #a6b2bd; background: #f5f7f8; border: 1px solid #e3e9ea; border-radius: 5px; font: 9px var(--mono); font-weight: 800; }
+    .key-toggle:hover { color: var(--teal-dark); border-color: #9bcfc9; }
+    .key-toggle.is-primary { color: #996816; background: #fff7df; border-color: #efdca3; }
+    .column-name-wrap { min-width: 0; }
+    .column-name-input { width: 100%; min-width: 0; padding: 0; overflow: hidden; color: var(--ink-soft); background: transparent; border: 0; font: 11px var(--mono); font-weight: 700; text-overflow: ellipsis; }
+    .column-name-input:focus { outline: 0; }
+    .column-name-input:focus-visible { outline: 2px solid rgba(13,139,131,.25); outline-offset: 2px; border-radius: 3px; }
+    .source-badge { display: block; overflow: hidden; margin-top: 3px; color: var(--teal-dark); font: 9px var(--mono); white-space: nowrap; text-overflow: ellipsis; }
+    .column-type-select { width: 100%; height: 28px; padding: 0 4px; color: var(--ink-muted); background: #f8fafb; border: 1px solid #e0e8e9; border-radius: 5px; font-size: 10px; }
+    .column-type-select:focus { border-color: #9bcfc9; outline: 0; }
+    .row-delete { width: 24px; height: 26px; color: #b6c0c8; font-size: 15px; }
+    .row-delete:hover { color: var(--danger); background: #fff1f0; }
+    .empty-columns { padding: 17px 9px; color: var(--ink-muted); text-align: center; font-size: 11px; }
+    .table-card__footer { display: flex; justify-content: space-between; gap: 7px; padding: 11px 14px 13px; background: #fbfcfc; border-top: 1px solid #edf1f1; }
+    .card-action { display: inline-flex; align-items: center; gap: 5px; min-height: 28px; padding: 0 7px; color: var(--ink-muted); background: transparent; border: 1px solid transparent; border-radius: 5px; font-size: 10px; font-weight: 800; }
+    .card-action:hover { color: var(--teal-dark); background: var(--teal-pale); border-color: #b7e2de; }
+    .card-action .plus { font-size: 16px; font-weight: 400; line-height: 0; }
+
+    .board-empty { position: absolute; top: 160px; left: 28px; z-index: 3; width: min(360px, calc(100vw - 40px)); padding: 28px; text-align: center; background: rgba(255,255,255,.94); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-float); }
+    .board-empty-mark { display: grid; place-items: center; width: 42px; height: 42px; margin: 0 auto 12px; color: var(--teal-dark); background: var(--teal-pale); border-radius: 11px; font-size: 22px; }
+    .board-empty h2 { margin: 0; color: var(--ink); font-size: 18px; letter-spacing: -.02em; }
+    .board-empty p { margin: 8px 0 17px; color: var(--ink-muted); font-size: 12px; line-height: 1.5; }
+    .canvas-hint { position: absolute; right: 22px; bottom: 18px; z-index: 3; padding: 7px 9px; color: #789096; background: rgba(255,255,255,.8); border: 1px solid rgba(202,218,218,.8); border-radius: 6px; font: 10px var(--mono); pointer-events: none; }
+
+    .toast { position: fixed; right: 24px; bottom: 24px; z-index: 30; max-width: 310px; padding: 11px 14px; color: #fff; background: var(--navy); border: 1px solid rgba(225, 241, 240, .14); border-radius: 8px; box-shadow: var(--shadow-float); font-size: 12px; opacity: 0; pointer-events: none; transform: translateY(10px); transition: opacity .18s ease, transform .18s ease; }
+    .toast.is-visible { opacity: 1; transform: translateY(0); }
+    .toast.is-error { background: #6f2f37; }
+
+    .modal-backdrop[hidden] { display: none; }
+    .modal-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(12, 24, 39, .56); backdrop-filter: blur(4px); }
+    .modal { position: relative; width: min(500px, 100%); max-height: min(720px, calc(100dvh - 40px)); overflow: auto; padding: 25px; background: var(--white); border: 1px solid rgba(255,255,255,.35); border-radius: 16px; box-shadow: 0 28px 70px rgba(4, 15, 28, .25); }
+    .modal.compact { width: min(430px, 100%); }
+    .modal-close { position: absolute; top: 15px; right: 15px; display: grid; place-items: center; width: 30px; height: 30px; color: var(--ink-muted); background: transparent; border: 0; border-radius: 6px; font-size: 20px; }
+    .modal-close:hover { color: var(--ink); background: var(--paper-2); }
+    .modal-kicker { color: var(--teal-dark); font: 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .modal h2 { margin: 7px 35px 7px 0; color: var(--ink); font-size: 22px; letter-spacing: -.035em; }
+    .modal-intro { margin: 0 0 20px; color: var(--ink-muted); font-size: 12px; line-height: 1.55; }
+    .form-stack { display: grid; gap: 15px; }
+    .form-field { display: grid; gap: 7px; }
+    .form-field label, .form-field > span { color: var(--ink-soft); font-size: 11px; font-weight: 800; }
+    .form-field input, .form-field select { width: 100%; height: 40px; padding: 0 11px; color: var(--ink); background: #fbfcfc; border: 1px solid var(--line-strong); border-radius: 7px; }
+    .form-field input::placeholder { color: #a7b1bb; }
+    .form-field select { font-size: 12px; }
+    .form-field small { color: var(--ink-muted); font-size: 10px; line-height: 1.4; }
+    .modal-actions { justify-content: flex-end; gap: 8px; margin-top: 22px; }
+
+    .swatches { display: flex; gap: 8px; }
+    .swatch { position: relative; width: 28px; height: 28px; padding: 0; background: var(--swatch); border: 3px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px var(--line-strong); }
+    .swatch.is-selected { box-shadow: 0 0 0 2px var(--swatch), 0 0 0 4px #fff; }
+    .swatch span { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 13px; opacity: 0; }
+    .swatch.is-selected span { opacity: 1; }
+
+    .import-fields { display: grid; gap: 6px; max-height: 230px; overflow: auto; padding: 2px; }
+    .import-empty { padding: 12px; color: var(--ink-muted); background: var(--paper-2); border-radius: 7px; font-size: 11px; line-height: 1.5; }
+    .import-field { display: grid; grid-template-columns: 22px minmax(0,1fr) auto; align-items: center; gap: 7px; min-height: 42px; padding: 0 9px; background: #fbfcfc; border: 1px solid var(--line); border-radius: 7px; }
+    .import-field:hover { border-color: #a6c8c5; }
+    .import-field input { width: 16px; height: 16px; accent-color: var(--teal); }
+    .import-field-name { overflow: hidden; color: var(--ink-soft); font: 11px var(--mono); font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
+    .import-field-type { color: var(--ink-muted); font-size: 10px; }
+    .check-row { display: flex; align-items: flex-start; gap: 9px; padding: 11px 12px; color: var(--ink-soft); background: #f3faf9; border: 1px solid #cce8e4; border-radius: 7px; font-size: 11px; line-height: 1.45; }
+    .check-row input { flex: 0 0 auto; width: 16px; height: 16px; margin-top: 1px; accent-color: var(--teal); }
+    .link-hint { margin: -7px 0 0 27px; color: var(--ink-muted); font-size: 10px; line-height: 1.4; }
+    .link-hint.is-warning { color: var(--danger); }
+    .relationship-preview { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); align-items: center; gap: 8px; padding: 12px; color: var(--ink-soft); background: var(--paper-2); border-radius: 7px; font: 11px var(--mono); }
+    .relationship-preview strong { display: block; overflow: hidden; color: var(--ink); white-space: nowrap; text-overflow: ellipsis; }
+    .relationship-preview span { display: block; overflow: hidden; margin-top: 3px; color: var(--ink-muted); white-space: nowrap; text-overflow: ellipsis; }
+    .relationship-preview .arrow { color: var(--teal-dark); font-size: 18px; }
+
+    @media (max-width: 1100px) {
+      .topbar { grid-template-columns: minmax(180px,1fr) auto minmax(190px,1fr); gap: 12px; padding: 0 16px; }
+      .project-lockup { display: none; }
+      .main-grid { grid-template-columns: 250px minmax(0,1fr); }
+      .mode-note { display: none; }
+    }
+
+    @media (max-width: 860px) {
+      body { overflow: auto; }
+      .app-shell { grid-template-rows: 76px minmax(0, 1fr); min-height: 760px; height: 100dvh; }
+      .topbar { grid-template-columns: minmax(0,1fr) auto; }
+      .topbar-actions { gap: 5px; }
+      .main-grid { grid-template-columns: 1fr; grid-template-rows: minmax(620px, 1fr) auto; min-height: 0; height: 100%; }
+      .board-shell { order: 1; min-height: 620px; }
+      .inspector { order: 2; max-height: 310px; border-top: 1px solid var(--line); border-right: 0; }
+      .inspector-inner { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; padding: 18px 18px 22px; }
+      .inspector-section { margin-bottom: 18px; }
+      .inspector-section.search-section { grid-column: 1 / -1; }
+      .inspector-section.type-section { grid-column: 1 / -1; }
+      .inspector-section:last-child { margin-bottom: 0; }
+      .type-reference-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .board-toolbar { padding: 0 16px; }
+      .canvas-hint { display: none; }
+    }
+
+    @media (max-width: 560px) {
+      .app-shell { grid-template-rows: 104px minmax(0, 1fr); min-height: 860px; height: 100dvh; }
+      .topbar { align-items: center; padding: 12px 13px; }
+      .brand-copy span { display: none; }
+      .brand-copy strong { font-size: 12px; }
+      .brand-mark { width: 32px; height: 32px; }
+      .topbar-actions .button { min-height: 34px; padding: 0 9px; font-size: 10px; }
+      .topbar-actions .button:not(.primary) { display: none; }
+      .main-grid { grid-template-rows: 610px 250px; height: auto; }
+      .board-shell { grid-template-rows: auto minmax(0, 1fr); height: 610px; min-height: 0; }
+      .board-toolbar { align-items: center; min-height: 58px; padding: 9px 12px; }
+      .toolbar-title h1 { font-size: 14px; }
+      .toolbar-title p { display: none; }
+      .toolbar-title .canvas-mark { width: 28px; height: 28px; font-size: 14px; }
+      .toolbar-actions { gap: 3px; }
+      .toolbar-actions .button { min-height: 32px; padding: 0 7px; font-size: 10px; }
+      .toolbar-actions .button .button-label { display: none; }
+      .toolbar-actions .button.primary { min-width: 34px; padding: 0 9px; }
+      .inspector { max-height: 250px; }
+      .inspector-inner { display: block; padding: 14px 13px 18px; }
+      .inspector-section { margin-bottom: 14px; }
+      .inspector-section.relations-section { display: none; }
+      .type-section { display: none; }
+      .table-index { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 3px; }
+      .table-index-item { flex: 0 0 160px; }
+      .table-card { width: 350px; }
+      .board-empty { left: 20px; top: 130px; }
+      .column-row { grid-template-columns: 29px minmax(0, 1fr) 105px 24px; gap: 5px; }
+      .modal-backdrop { padding: 12px; }
+      .modal { padding: 21px 17px; border-radius: 13px; }
+      .modal-actions { position: sticky; bottom: -21px; padding: 13px 0 2px; background: var(--white); }
+      .toast { right: 13px; bottom: 13px; left: 13px; max-width: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-lockup">
+        <div class="brand-mark" aria-hidden="true"><span></span></div>
+        <div class="brand-copy">
+          <strong>Schema Studio</strong>
+          <span>Access planning board</span>
+        </div>
+      </div>
+      <div class="project-lockup">
+        <div class="project-label">
+          <small>workspace</small>
+          <strong>Northwind · relational sketch</strong>
+        </div>
+        <span class="save-state" id="saveState">saved locally</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="button dark" type="button" data-action="export-json" title="Download the current schema as JSON"><span class="button-icon">↓</span><span class="button-label">Export</span></button>
+        <button class="button dark" type="button" data-action="reset-demo" title="Restore the example schema">Demo</button>
+        <button class="button dark" type="button" data-action="clear-board" title="Remove all tables">Clear</button>
+        <button class="button primary" type="button" data-action="open-add-table"><span class="button-icon">＋</span><span class="button-label">Add table</span></button>
+      </div>
+    </header>
+
+    <main class="main-grid">
+      <aside class="inspector" aria-label="Schema inspector">
+        <div class="inspector-inner">
+          <section class="inspector-section search-section">
+            <div class="search-box">
+              <span class="search-icon" aria-hidden="true">⌕</span>
+              <input id="tableSearch" type="search" placeholder="Find a table…" autocomplete="off">
+            </div>
+          </section>
+
+          <section class="inspector-section">
+            <div class="section-label">Board overview</div>
+            <div class="stat-grid">
+              <div class="stat-tile"><strong id="tableCount">0</strong><span>tables</span></div>
+              <div class="stat-tile"><strong id="fieldCount">0</strong><span>fields</span></div>
+              <div class="stat-tile"><strong id="relationshipCount">0</strong><span>links</span></div>
+            </div>
+          </section>
+
+          <section class="inspector-section">
+            <div class="section-label">Tables</div>
+            <div class="table-index" id="tableIndex"></div>
+          </section>
+
+          <section class="inspector-section selection-section">
+            <div class="section-label">Selection</div>
+            <div id="selectionDetails"></div>
+          </section>
+
+          <section class="inspector-section relations-section">
+            <div class="section-label">Relationships</div>
+            <div class="relation-list" id="relationList"></div>
+          </section>
+
+          <section class="inspector-section type-section">
+            <details class="type-reference" open>
+              <summary>MS Access types</summary>
+              <div class="type-reference-list" id="typeReference"></div>
+            </details>
+          </section>
+        </div>
+      </aside>
+
+      <section class="board-shell" aria-label="Database whiteboard">
+        <div class="board-toolbar">
+          <div class="toolbar-title">
+            <div class="canvas-mark" aria-hidden="true">⌘</div>
+            <div>
+              <h1>Schema canvas</h1>
+              <p>Drag tables to arrange the story of your data.</p>
+            </div>
+          </div>
+          <div class="toolbar-actions">
+            <span class="mode-note" id="modeNote">Canvas ready</span>
+            <button class="button" type="button" data-action="fit-view" title="Center the current schema on the canvas">Fit view</button>
+            <button class="button" type="button" data-action="open-relationship" title="Create a relationship between two fields"><span class="button-icon">↗</span><span class="button-label">Relationship</span></button>
+            <button class="button primary" type="button" data-action="toggle-connect" id="connectButton" title="Pick two cards, then choose their fields">Connect</button>
+          </div>
+        </div>
+        <div class="board-scroll" id="boardScroll">
+          <div class="board-canvas" id="boardCanvas"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <div class="modal-backdrop" id="tableModal" hidden>
+    <div class="modal compact" role="dialog" aria-modal="true" aria-labelledby="tableModalTitle">
+      <button class="modal-close" type="button" data-action="close-modal" aria-label="Close">×</button>
+      <div class="modal-kicker">Canvas object</div>
+      <h2 id="tableModalTitle">Add a table</h2>
+      <p class="modal-intro">Start with a name. You can edit fields directly on the card once it lands on the board.</p>
+      <form id="tableForm">
+        <div class="form-stack">
+          <div class="form-field">
+            <label for="newTableName">Table name</label>
+            <input id="newTableName" name="tableName" type="text" placeholder="e.g. Invoices" maxlength="64" required>
+            <small>Use a clear noun or business concept; spaces are fine for planning.</small>
+          </div>
+          <div class="form-field">
+            <span>Card accent</span>
+            <div class="swatches" id="tableSwatches"></div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="button quiet" type="button" data-action="close-modal">Cancel</button>
+          <button class="button primary" type="submit">Place table</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="importModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="importModalTitle">
+      <button class="modal-close" type="button" data-action="close-modal" aria-label="Close">×</button>
+      <div class="modal-kicker">Reuse existing structure</div>
+      <h2 id="importModalTitle">Import fields</h2>
+      <p class="modal-intro" id="importIntro">Bring columns from another table into the selected table. Imported fields keep a visible source badge.</p>
+      <form id="importForm">
+        <div class="form-stack">
+          <div class="form-field">
+            <label for="importSourceTable">Source table</label>
+            <select id="importSourceTable" required></select>
+          </div>
+          <div class="form-field">
+            <span>Fields to import</span>
+            <div class="import-fields" id="importFields"></div>
+          </div>
+          <div class="form-field" id="importLinkBlock">
+            <label class="check-row"><input id="importMakeLink" type="checkbox" checked> <span>Create a 1 → many relationship back to the source key</span></label>
+            <div class="link-hint" id="importLinkHint">The source key must be one of the fields you import.</div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="button quiet" type="button" data-action="close-modal">Cancel</button>
+          <button class="button primary" type="submit">Import fields</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="relationshipModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="relationshipModalTitle">
+      <button class="modal-close" type="button" data-action="close-modal" aria-label="Close">×</button>
+      <div class="modal-kicker">Relationship line</div>
+      <h2 id="relationshipModalTitle">Add a relationship</h2>
+      <p class="modal-intro">Choose the key on each side. The line will stay attached to those fields as you rearrange the board.</p>
+      <form id="relationshipForm">
+        <div class="form-stack">
+          <div class="form-field">
+            <label for="relationSourceTable">From table</label>
+            <select id="relationSourceTable" required></select>
+          </div>
+          <div class="form-field">
+            <label for="relationSourceColumn">From field</label>
+            <select id="relationSourceColumn" required></select>
+          </div>
+          <div class="relationship-preview" id="relationshipPreview">
+            <div><strong>Choose a source</strong><span>field</span></div>
+            <div class="arrow">→</div>
+            <div><strong>Choose a target</strong><span>field</span></div>
+          </div>
+          <div class="form-field">
+            <label for="relationTargetTable">To table</label>
+            <select id="relationTargetTable" required></select>
+          </div>
+          <div class="form-field">
+            <label for="relationTargetColumn">To field</label>
+            <select id="relationTargetColumn" required></select>
+          </div>
+          <div class="form-field">
+            <label for="relationCardinality">Cardinality</label>
+            <select id="relationCardinality">
+              <option value="1:1">1 → 1</option>
+              <option value="1:N" selected>1 → many</option>
+              <option value="N:1">many → 1</option>
+              <option value="N:N">many ↔ many</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="relationLabel">Label <span style="font-weight:400;color:var(--ink-muted)">(optional)</span></label>
+            <input id="relationLabel" type="text" maxlength="64" placeholder="e.g. customer places order">
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="button quiet" type="button" data-action="close-modal">Cancel</button>
+          <button class="button primary" type="submit">Draw relationship</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const STORAGE_KEY = 'schema-studio-access-planner-v1';
+      const COLORS = ['#0d8b83', '#3f7fb5', '#8a6bb8', '#d17d48', '#b86675', '#6a9b61', '#c39235'];
+      const ACCESS_TYPES = [
+        { value: 'Short Text', description: 'Text up to 255 characters' },
+        { value: 'Long Text', description: 'Long-form text / memo' },
+        { value: 'Number', description: 'Numeric values' },
+        { value: 'Large Number', description: 'Big integer values' },
+        { value: 'Date/Time', description: 'Date and time values' },
+        { value: 'Date/Time Extended', description: 'Extended date and time' },
+        { value: 'Currency', description: 'Currency with fixed precision' },
+        { value: 'AutoNumber', description: 'Automatically generated ID' },
+        { value: 'Yes/No', description: 'Boolean true / false' },
+        { value: 'OLE Object', description: 'Embedded or linked object' },
+        { value: 'Hyperlink', description: 'Web or file link' },
+        { value: 'Attachment', description: 'Attached files' },
+        { value: 'Calculated', description: 'Expression-based value' },
+        { value: 'Lookup Wizard', description: 'Value selected from a list' }
+      ];
+
+      const $ = (selector, root = document) => root.querySelector(selector);
+      const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+      const clone = (value) => JSON.parse(JSON.stringify(value));
+      const makeId = (prefix) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+      const escapeAttr = escapeHtml;
+
+      const DEMO_STATE = {
+        tables: [
+          {
+            id: 'tbl-customers', name: 'Customers', x: 30, y: 205, color: COLORS[0], description: 'People or organisations that place orders.',
+            columns: [
+              { id: 'col-customers-id', name: 'customer_id', type: 'AutoNumber', primary: true },
+              { id: 'col-customers-name', name: 'full_name', type: 'Short Text', primary: false },
+              { id: 'col-customers-email', name: 'email', type: 'Short Text', primary: false },
+              { id: 'col-customers-joined', name: 'joined_on', type: 'Date/Time', primary: false }
+            ]
+          },
+          {
+            id: 'tbl-orders', name: 'Orders', x: 520, y: 150, color: COLORS[1], description: 'One record for each customer purchase.',
+            columns: [
+              { id: 'col-orders-id', name: 'order_id', type: 'AutoNumber', primary: true },
+              { id: 'col-orders-customer', name: 'customer_id', type: 'Number', primary: false, importedFrom: { tableId: 'tbl-customers', columnId: 'col-customers-id' } },
+              { id: 'col-orders-date', name: 'order_date', type: 'Date/Time', primary: false },
+              { id: 'col-orders-total', name: 'total', type: 'Currency', primary: false }
+            ]
+          },
+          {
+            id: 'tbl-order-items', name: 'OrderItems', x: 1010, y: 275, color: COLORS[2], description: 'Line items belonging to an order.',
+            columns: [
+              { id: 'col-items-id', name: 'order_item_id', type: 'AutoNumber', primary: true },
+              { id: 'col-items-order', name: 'order_id', type: 'Number', primary: false, importedFrom: { tableId: 'tbl-orders', columnId: 'col-orders-id' } },
+              { id: 'col-items-product', name: 'product_name', type: 'Short Text', primary: false },
+              { id: 'col-items-qty', name: 'quantity', type: 'Number', primary: false },
+              { id: 'col-items-price', name: 'unit_price', type: 'Currency', primary: false }
+            ]
+          }
+        ],
+        relationships: [
+          { id: 'rel-customers-orders', sourceTableId: 'tbl-customers', sourceColumnId: 'col-customers-id', targetTableId: 'tbl-orders', targetColumnId: 'col-orders-customer', cardinality: '1:N', label: 'places' },
+          { id: 'rel-orders-items', sourceTableId: 'tbl-orders', sourceColumnId: 'col-orders-id', targetTableId: 'tbl-order-items', targetColumnId: 'col-items-order', cardinality: '1:N', label: 'contains' }
+        ]
+      };
+
+      let state = loadState();
+      let selectedTableId = state.tables[0]?.id || null;
+      let connectMode = false;
+      let connectSelection = [];
+      let importContext = null;
+      let highlightedRelationId = null;
+      let dragState = null;
+      let lastDragMoved = false;
+      let toastTimer = null;
+
+      function loadState() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (parsed && Array.isArray(parsed.tables) && Array.isArray(parsed.relationships)) return parsed;
+          }
+        } catch (error) {
+          console.warn('Could not load saved schema:', error);
+        }
+        return clone(DEMO_STATE);
+      }
+
+      function persist(message = 'saved locally') {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (error) { console.warn('Could not save schema:', error); }
+        $('#saveState').textContent = message;
+        window.clearTimeout(persist._timer);
+        persist._timer = window.setTimeout(() => { $('#saveState').textContent = 'saved locally'; }, 1600);
+      }
+
+      function getTable(tableId) { return state.tables.find((table) => table.id === tableId); }
+      function getColumn(tableId, columnId) { return getTable(tableId)?.columns.find((column) => column.id === columnId); }
+      function getTableName(tableId) { return getTable(tableId)?.name || 'Unknown table'; }
+      function getColumnName(tableId, columnId) { return getColumn(tableId, columnId)?.name || 'Unknown field'; }
+      function tableFieldCount() { return state.tables.reduce((sum, table) => sum + table.columns.length, 0); }
+      function relationshipsFor(tableId, columnId) { return state.relationships.filter((rel) => (rel.sourceTableId === tableId && rel.sourceColumnId === columnId) || (rel.targetTableId === tableId && rel.targetColumnId === columnId)); }
+      function linkedColumnIds(tableId) {
+        const ids = new Set();
+        state.relationships.forEach((rel) => {
+          if (rel.sourceTableId === tableId) ids.add(rel.sourceColumnId);
+          if (rel.targetTableId === tableId) ids.add(rel.targetColumnId);
+        });
+        return ids;
+      }
+      function uniqueColumnName(table, requested) {
+        const base = requested || 'new_field';
+        const existing = new Set(table.columns.map((column) => column.name.toLowerCase()));
+        if (!existing.has(base.toLowerCase())) return base;
+        let index = 2;
+        while (existing.has(`${base}_${index}`.toLowerCase())) index += 1;
+        return `${base}_${index}`;
+      }
+
+      function render() {
+        renderTopbar();
+        renderSidebar();
+        renderCanvas();
+        requestAnimationFrame(drawConnections);
+      }
+
+      function renderTopbar() {
+        $('#tableCount').textContent = state.tables.length;
+        $('#fieldCount').textContent = tableFieldCount();
+        $('#relationshipCount').textContent = state.relationships.length;
+        $('#connectButton').classList.toggle('is-active', connectMode);
+        $('#connectButton').textContent = connectMode ? 'Exit connect' : 'Connect';
+        const note = $('#modeNote');
+        note.textContent = connectMode ? (connectSelection.length ? 'Pick the second table' : 'Pick a source table') : 'Canvas ready';
+        note.classList.toggle('is-connect', connectMode);
+      }
+
+      function renderSidebar() {
+        const query = ($('#tableSearch').value || '').trim().toLowerCase();
+        const index = $('#tableIndex');
+        const visible = state.tables.filter((table) => table.name.toLowerCase().includes(query));
+        index.innerHTML = visible.length ? visible.map((table) => `
+          <button class="table-index-item ${table.id === selectedTableId ? 'is-selected' : ''}" type="button" data-action="select-table" data-table-id="${escapeAttr(table.id)}" style="--table-accent:${escapeAttr(table.color)}">
+            <span class="table-dot" aria-hidden="true"></span>
+            <span class="table-index-name">${escapeHtml(table.name)}</span>
+            <span class="table-index-count">${table.columns.length}</span>
+          </button>
+        `).join('') : '<div class="table-index-empty">No tables match that search.</div>';
+
+        const selected = getTable(selectedTableId);
+        const selection = $('#selectionDetails');
+        if (!selected) {
+          selection.innerHTML = '<div class="selection-card"><p>Select a card to inspect it, or add a table to start a new schema.</p></div>';
+        } else {
+          const primaryCount = selected.columns.filter((column) => column.primary).length;
+          const relationCount = state.relationships.filter((rel) => rel.sourceTableId === selected.id || rel.targetTableId === selected.id).length;
+          selection.innerHTML = `
+            <div class="selection-card">
+              <div class="eyebrow">Selected table</div>
+              <h3>${escapeHtml(selected.name)}</h3>
+              <p>${escapeHtml(selected.description || 'A working table definition on the whiteboard.')}</p>
+              <div class="selection-meta">
+                <span class="mini-chip teal">${selected.columns.length} fields</span>
+                <span class="mini-chip">${primaryCount} key${primaryCount === 1 ? '' : 's'}</span>
+                <span class="mini-chip">${relationCount} link${relationCount === 1 ? '' : 's'}</span>
+              </div>
+              <div class="selection-actions">
+                <button class="button quiet" type="button" data-action="focus-selected">Center card</button>
+                <button class="button quiet" type="button" data-action="open-import" data-table-id="${escapeAttr(selected.id)}">Import fields</button>
+              </div>
+            </div>
+          `;
+        }
+
+        const relationList = $('#relationList');
+        relationList.innerHTML = state.relationships.length ? state.relationships.map((rel) => {
+          const source = `${getTableName(rel.sourceTableId)}.${getColumnName(rel.sourceTableId, rel.sourceColumnId)}`;
+          const target = `${getTableName(rel.targetTableId)}.${getColumnName(rel.targetTableId, rel.targetColumnId)}`;
+          return `
+            <div class="relation-item ${rel.id === highlightedRelationId ? 'is-highlighted' : ''}" data-relation-id="${escapeAttr(rel.id)}">
+              <div class="relation-route"><strong>${escapeHtml(source)}</strong><span><b class="relation-cardinality">${escapeHtml(rel.cardinality || '1:N')}</b> ${escapeHtml(rel.label || 'related to')} → ${escapeHtml(target)}</span></div>
+              <button class="relation-delete" type="button" data-action="delete-relationship" data-relation-id="${escapeAttr(rel.id)}" aria-label="Delete relationship">×</button>
+            </div>
+          `;
+        }).join('') : '<div class="relation-empty">No lines yet. Use Connect to pick two cards, or add a relationship manually.</div>';
+
+        $('#typeReference').innerHTML = ACCESS_TYPES.map((type) => `<div class="type-reference-item"><div><strong>${escapeHtml(type.value)}</strong>${escapeHtml(type.description)}</div></div>`).join('');
+      }
+
+      function renderCanvas() {
+        const canvas = $('#boardCanvas');
+        const maxX = state.tables.reduce((max, table) => Math.max(max, Number(table.x) + 470), 0);
+        const maxY = state.tables.reduce((max, table) => Math.max(max, Number(table.y) + 500), 0);
+        canvas.style.width = `${Math.max(2700, maxX)}px`;
+        canvas.style.height = `${Math.max(1700, maxY)}px`;
+        canvas.innerHTML = `
+          <svg class="connections" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arrowhead" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#6d9996"></path></marker>
+              <marker id="arrowhead-highlight" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#ec7d61"></path></marker>
+            </defs>
+          </svg>
+          ${state.tables.map(tableCardMarkup).join('')}
+          ${state.tables.length ? '<div class="canvas-hint">drag headers · double-click names to edit</div>' : `
+            <div class="board-empty">
+              <div class="board-empty-mark">＋</div>
+              <h2>Your canvas is clear</h2>
+              <p>Add a table, define its Access fields, then connect the data story with relationship lines.</p>
+              <button class="button primary" type="button" data-action="open-add-table">Add your first table</button>
+            </div>
+          `}
+        `;
+      }
+
+      function tableCardMarkup(table) {
+        const linkedIds = linkedColumnIds(table.id);
+        const relationCount = state.relationships.filter((rel) => rel.sourceTableId === table.id || rel.targetTableId === table.id).length;
+        const classes = [
+          'table-card',
+          table.id === selectedTableId ? 'is-selected' : '',
+          connectSelection.includes(table.id) ? (connectSelection[0] === table.id ? 'is-connect-source' : 'is-connect-target') : '',
+          connectMode ? 'connectable' : ''
+        ].filter(Boolean).join(' ');
+        const columns = table.columns.length ? table.columns.map((column) => `
+          <div class="column-row ${linkedIds.has(column.id) ? 'is-linked' : ''}" data-table-id="${escapeAttr(table.id)}" data-column-id="${escapeAttr(column.id)}">
+            <button class="key-toggle ${column.primary ? 'is-primary' : ''}" type="button" data-action="toggle-primary" data-table-id="${escapeAttr(table.id)}" data-column-id="${escapeAttr(column.id)}" title="${column.primary ? 'Primary key' : 'Mark as primary key'}">${column.primary ? 'PK' : '·'}</button>
+            <div class="column-name-wrap">
+              <input class="column-name-input" type="text" value="${escapeAttr(column.name)}" aria-label="Column name" data-field="column-name" data-table-id="${escapeAttr(table.id)}" data-column-id="${escapeAttr(column.id)}" maxlength="64">
+              ${column.importedFrom ? `<span class="source-badge">↳ imported from ${escapeHtml(getTableName(column.importedFrom.tableId))}</span>` : ''}
+            </div>
+            <select class="column-type-select" aria-label="Column type" data-field="column-type" data-table-id="${escapeAttr(table.id)}" data-column-id="${escapeAttr(column.id)}">
+              ${ACCESS_TYPES.map((type) => `<option value="${escapeAttr(type.value)}" ${type.value === column.type ? 'selected' : ''}>${escapeHtml(type.value)}</option>`).join('')}
+            </select>
+            <button class="icon-button row-delete" type="button" data-action="delete-column" data-table-id="${escapeAttr(table.id)}" data-column-id="${escapeAttr(column.id)}" title="Remove field" aria-label="Remove ${escapeAttr(column.name)}">×</button>
+          </div>
+        `).join('') : '<div class="empty-columns">No fields yet — add one below.</div>';
+
+        return `
+          <article class="${classes}" data-table-id="${escapeAttr(table.id)}" style="left:${Number(table.x) || 0}px;top:${Number(table.y) || 0}px;--table-accent:${escapeAttr(table.color || COLORS[0])}">
+            <header class="table-card__header" data-drag-handle>
+              <div class="table-card__identity">
+                <div class="table-card__identity-line"><span class="table-dot" aria-hidden="true"></span><input class="table-name-input" type="text" value="${escapeAttr(table.name)}" aria-label="Table name" data-field="table-name" data-table-id="${escapeAttr(table.id)}" maxlength="64"></div>
+                <div class="table-caption">Access table · ${relationCount ? `${relationCount} relationship${relationCount === 1 ? '' : 's'}` : 'unlinked'}</div>
+              </div>
+              <div class="card-actions">
+                <button class="icon-button" type="button" data-action="select-table" data-table-id="${escapeAttr(table.id)}" title="Select table" aria-label="Select ${escapeAttr(table.name)}">◉</button>
+                <button class="icon-button danger" type="button" data-action="delete-table" data-table-id="${escapeAttr(table.id)}" title="Delete table" aria-label="Delete ${escapeAttr(table.name)}">×</button>
+              </div>
+            </header>
+            <div class="table-meta"><span>${table.columns.length} field${table.columns.length === 1 ? '' : 's'}</span><span class="primary-count">${table.columns.filter((column) => column.primary).length} primary key${table.columns.filter((column) => column.primary).length === 1 ? '' : 's'}</span></div>
+            <div class="column-list">${columns}</div>
+            <footer class="table-card__footer">
+              <button class="card-action" type="button" data-action="add-column" data-table-id="${escapeAttr(table.id)}"><span class="plus">＋</span> Add field</button>
+              <button class="card-action" type="button" data-action="open-import" data-table-id="${escapeAttr(table.id)}">↳ Import fields</button>
+            </footer>
+          </article>
+        `;
+      }
+
+      function drawConnections() {
+        const canvas = $('#boardCanvas');
+        const svg = $('.connections', canvas);
+        if (!svg) return;
+        const canvasRect = canvas.getBoundingClientRect();
+        const width = canvas.clientWidth;
+        const height = canvas.clientHeight;
+        svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        svg.setAttribute('width', width);
+        svg.setAttribute('height', height);
+        const pieces = [];
+
+        state.relationships.forEach((rel) => {
+          const sourceRow = $(`.column-row[data-table-id="${cssEscape(rel.sourceTableId)}"][data-column-id="${cssEscape(rel.sourceColumnId)}"]`, canvas);
+          const targetRow = $(`.column-row[data-table-id="${cssEscape(rel.targetTableId)}"][data-column-id="${cssEscape(rel.targetColumnId)}"]`, canvas);
+          const sourceCard = $(`.table-card[data-table-id="${cssEscape(rel.sourceTableId)}"]`, canvas);
+          const targetCard = $(`.table-card[data-table-id="${cssEscape(rel.targetTableId)}"]`, canvas);
+          if (!sourceRow || !targetRow || !sourceCard || !targetCard) return;
+
+          const sourceRect = sourceRow.getBoundingClientRect();
+          const targetRect = targetRow.getBoundingClientRect();
+          const sourceCardRect = sourceCard.getBoundingClientRect();
+          const targetCardRect = targetCard.getBoundingClientRect();
+          const sourceCenter = sourceCardRect.left + sourceCardRect.width / 2;
+          const targetCenter = targetCardRect.left + targetCardRect.width / 2;
+          const leftToRight = sourceCenter <= targetCenter;
+          const sx = (leftToRight ? sourceRect.right : sourceRect.left) - canvasRect.left;
+          const tx = (leftToRight ? targetRect.left : targetRect.right) - canvasRect.left;
+          const sy = sourceRect.top + sourceRect.height / 2 - canvasRect.top;
+          const ty = targetRect.top + targetRect.height / 2 - canvasRect.top;
+          const direction = leftToRight ? 1 : -1;
+          const bend = Math.max(70, Math.min(240, Math.abs(tx - sx) * .45));
+          const path = `M ${sx.toFixed(1)} ${sy.toFixed(1)} C ${(sx + direction * bend).toFixed(1)} ${sy.toFixed(1)}, ${(tx - direction * bend).toFixed(1)} ${ty.toFixed(1)}, ${tx.toFixed(1)} ${ty.toFixed(1)}`;
+          const highlighted = rel.id === highlightedRelationId;
+          const label = rel.label || rel.cardinality || 'related';
+          const labelWidth = Math.max(45, Math.min(130, label.length * 6.2 + 18));
+          const labelX = (sx + tx) / 2 - labelWidth / 2;
+          const labelY = (sy + ty) / 2 - 13;
+          pieces.push(`
+            <g data-relation-id="${escapeAttr(rel.id)}" class="connection-group">
+              <path class="connection-path ${highlighted ? 'is-highlighted' : ''}" d="${path}"></path>
+              <circle class="connection-node ${highlighted ? 'is-highlighted' : ''}" cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="4"></circle>
+              <circle class="connection-node ${highlighted ? 'is-highlighted' : ''}" cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="4"></circle>
+              <rect class="connection-label-bg" x="${labelX.toFixed(1)}" y="${labelY.toFixed(1)}" width="${labelWidth.toFixed(1)}" height="22" rx="6"></rect>
+              <text class="connection-label-text ${highlighted ? 'is-highlighted' : ''}" x="${((sx + tx) / 2).toFixed(1)}" y="${((sy + ty) / 2 + 4).toFixed(1)}" text-anchor="middle">${escapeHtml(label)} · ${escapeHtml(rel.cardinality || '1:N')}</text>
+            </g>
+          `);
+        });
+        svg.querySelectorAll('.connection-group').forEach((node) => node.remove());
+        if (pieces.length) svg.insertAdjacentHTML('beforeend', pieces.join(''));
+      }
+
+      function cssEscape(value) {
+        if (window.CSS && CSS.escape) return CSS.escape(String(value));
+        return String(value).replace(/[^a-zA-Z0-9_-]/g, (char) => `\\${char}`);
+      }
+
+      function showToast(message, isError = false) {
+        const toast = $('#toast');
+        toast.textContent = message;
+        toast.classList.toggle('is-error', isError);
+        toast.classList.add('is-visible');
+        window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(() => toast.classList.remove('is-visible'), 2600);
+      }
+
+      function openModal(id) {
+        $$('.modal-backdrop').forEach((backdrop) => { backdrop.hidden = true; });
+        const modal = $(`#${id}`);
+        if (!modal) return;
+        modal.hidden = false;
+        const first = $('input, select, button:not(.modal-close)', modal);
+        window.setTimeout(() => first?.focus(), 30);
+      }
+
+      function closeModals() {
+        $$('.modal-backdrop').forEach((backdrop) => { backdrop.hidden = true; });
+        importContext = null;
+      }
+
+      function nextTablePosition() {
+        const index = state.tables.length;
+        if (window.innerWidth <= 560) return { x: 24, y: 170 + index * 430 };
+        const row = Math.floor(index / 3);
+        return { x: 120 + (index % 3) * 540, y: 180 + row * 430 };
+      }
+
+      function openAddTableModal() {
+        $('#newTableName').value = '';
+        renderSwatches(COLORS[(state.tables.length) % COLORS.length]);
+        openModal('tableModal');
+      }
+
+      function renderSwatches(selectedColor) {
+        $('#tableSwatches').innerHTML = COLORS.map((color) => `<button class="swatch ${color === selectedColor ? 'is-selected' : ''}" type="button" data-color="${escapeAttr(color)}" style="--swatch:${escapeAttr(color)}" aria-label="Use ${escapeAttr(color)} accent"><span>✓</span></button>`).join('');
+      }
+
+      function createTable(name, color) {
+        const position = nextTablePosition();
+        const table = { id: makeId('tbl'), name: name.trim(), x: position.x, y: position.y, color: color || COLORS[state.tables.length % COLORS.length], description: 'A new table definition.', columns: [] };
+        state.tables.push(table);
+        selectedTableId = table.id;
+        persist('table added');
+        render();
+        closeModals();
+        showToast(`${table.name} placed on the canvas`);
+        focusTable(table.id);
+      }
+
+      function addColumn(tableId) {
+        const table = getTable(tableId);
+        if (!table) return;
+        const column = { id: makeId('col'), name: uniqueColumnName(table, 'new_field'), type: 'Short Text', primary: false };
+        table.columns.push(column);
+        selectedTableId = tableId;
+        persist('field added');
+        render();
+        window.setTimeout(() => {
+          const input = $(`.column-name-input[data-table-id="${cssEscape(tableId)}"][data-column-id="${cssEscape(column.id)}"]`);
+          input?.focus(); input?.select();
+        }, 30);
+      }
+
+      function deleteColumn(tableId, columnId) {
+        const table = getTable(tableId);
+        const column = getColumn(tableId, columnId);
+        if (!table || !column) return;
+        table.columns = table.columns.filter((item) => item.id !== columnId);
+        state.relationships = state.relationships.filter((rel) => !(rel.sourceTableId === tableId && rel.sourceColumnId === columnId) && !(rel.targetTableId === tableId && rel.targetColumnId === columnId));
+        if (highlightedRelationId && !state.relationships.some((rel) => rel.id === highlightedRelationId)) highlightedRelationId = null;
+        persist('field removed');
+        render();
+      }
+
+      function deleteTable(tableId) {
+        const table = getTable(tableId);
+        if (!table) return;
+        if (!window.confirm(`Delete the table “${table.name}” and its relationship lines?`)) return;
+        state.tables = state.tables.filter((item) => item.id !== tableId);
+        state.relationships = state.relationships.filter((rel) => rel.sourceTableId !== tableId && rel.targetTableId !== tableId);
+        state.tables.forEach((remainingTable) => remainingTable.columns.forEach((column) => {
+          if (column.importedFrom?.tableId === tableId) delete column.importedFrom;
+        }));
+        if (selectedTableId === tableId) selectedTableId = state.tables[0]?.id || null;
+        connectSelection = connectSelection.filter((id) => id !== tableId);
+        if (highlightedRelationId && !state.relationships.some((rel) => rel.id === highlightedRelationId)) highlightedRelationId = null;
+        persist('table removed');
+        render();
+        showToast(`${table.name} removed`);
+      }
+
+      function populateTableSelect(select, selectedId, excludeId) {
+        const tables = state.tables.filter((table) => table.id !== excludeId);
+        select.innerHTML = '<option value="">Choose a table…</option>' + tables.map((table) => `<option value="${escapeAttr(table.id)}">${escapeHtml(table.name)}</option>`).join('');
+        if (selectedId && tables.some((table) => table.id === selectedId)) select.value = selectedId;
+      }
+
+      function populateColumnSelect(select, tableId, selectedId) {
+        const table = getTable(tableId);
+        const columns = table ? [...table.columns].sort((a, b) => Number(b.primary) - Number(a.primary)) : [];
+        select.innerHTML = '<option value="">Choose a field…</option>' + columns.map((column) => `<option value="${escapeAttr(column.id)}">${column.primary ? '◆ ' : ''}${escapeHtml(column.name)} · ${escapeHtml(column.type)}</option>`).join('');
+        if (selectedId && columns.some((column) => column.id === selectedId)) select.value = selectedId;
+      }
+
+      function openRelationshipModal(prefill = {}) {
+        const sourceSelect = $('#relationSourceTable');
+        const targetSelect = $('#relationTargetTable');
+        populateTableSelect(sourceSelect, prefill.sourceTableId || selectedTableId || state.tables[0]?.id);
+        populateTableSelect(targetSelect, prefill.targetTableId || state.tables.find((table) => table.id !== (prefill.sourceTableId || selectedTableId))?.id);
+        const sourceTable = getTable(sourceSelect.value);
+        const targetTable = getTable(targetSelect.value);
+        const sourceDefaultColumn = prefill.sourceColumnId || sourceTable?.columns.find((column) => column.primary)?.id || sourceTable?.columns[0]?.id;
+        const targetDefaultColumn = prefill.targetColumnId || targetTable?.columns.find((column) => column.primary)?.id || targetTable?.columns[0]?.id;
+        populateColumnSelect($('#relationSourceColumn'), sourceSelect.value, sourceDefaultColumn);
+        populateColumnSelect($('#relationTargetColumn'), targetSelect.value, targetDefaultColumn);
+        $('#relationCardinality').value = prefill.cardinality || '1:N';
+        $('#relationLabel').value = prefill.label || '';
+        updateRelationshipPreview();
+        openModal('relationshipModal');
+      }
+
+      function updateRelationshipPreview() {
+        const sourceTableId = $('#relationSourceTable').value;
+        const sourceColumnId = $('#relationSourceColumn').value;
+        const targetTableId = $('#relationTargetTable').value;
+        const targetColumnId = $('#relationTargetColumn').value;
+        const sourceTable = getTable(sourceTableId);
+        const sourceColumn = getColumn(sourceTableId, sourceColumnId);
+        const targetTable = getTable(targetTableId);
+        const targetColumn = getColumn(targetTableId, targetColumnId);
+        $('#relationshipPreview').innerHTML = `
+          <div><strong>${escapeHtml(sourceTable?.name || 'Choose a source')}</strong><span>${escapeHtml(sourceColumn?.name || 'field')}</span></div>
+          <div class="arrow">→</div>
+          <div><strong>${escapeHtml(targetTable?.name || 'Choose a target')}</strong><span>${escapeHtml(targetColumn?.name || 'field')}</span></div>
+        `;
+      }
+
+      function openImportModal(targetTableId) {
+        const target = getTable(targetTableId);
+        if (!target) return;
+        importContext = { targetTableId };
+        $('#importIntro').textContent = `Bring columns into ${target.name}. Imported fields keep a visible source badge so their origin stays clear.`;
+        const source = state.tables.find((table) => table.id !== targetTableId);
+        populateTableSelect($('#importSourceTable'), source?.id, targetTableId);
+        renderImportFields();
+        openModal('importModal');
+      }
+
+      function renderImportFields() {
+        const source = getTable($('#importSourceTable').value);
+        const target = getTable(importContext?.targetTableId);
+        const container = $('#importFields');
+        if (!source || !target) {
+          container.innerHTML = '<div class="import-empty">Add another table before importing fields.</div>';
+          $('#importMakeLink').disabled = true;
+          $('#importLinkHint').textContent = 'A source table is required.';
+          $('#importLinkHint').classList.add('is-warning');
+          return;
+        }
+        $('#importMakeLink').disabled = !source.columns.some((column) => column.primary);
+        container.innerHTML = source.columns.length ? source.columns.map((column, index) => {
+          const duplicate = target.columns.some((existing) => existing.name.toLowerCase() === column.name.toLowerCase());
+          const checked = column.primary || index === 0;
+          return `<label class="import-field"><input type="checkbox" value="${escapeAttr(column.id)}" ${checked ? 'checked' : ''} data-import-column><span class="import-field-name">${column.primary ? '◆ ' : ''}${escapeHtml(column.name)}${duplicate ? ' · rename on import' : ''}</span><span class="import-field-type">${escapeHtml(column.type)}</span></label>`;
+        }).join('') : '<div class="import-empty">The source table has no fields to import yet.</div>';
+        const primary = source.columns.find((column) => column.primary);
+        if (primary) {
+          $('#importLinkHint').textContent = `Relationship target will be the imported copy of ${primary.name}.`;
+          $('#importLinkHint').classList.remove('is-warning');
+        } else {
+          $('#importLinkHint').textContent = 'Mark a source field as PK before creating a relationship automatically.';
+          $('#importLinkHint').classList.add('is-warning');
+        }
+      }
+
+      function importFields() {
+        const source = getTable($('#importSourceTable').value);
+        const target = getTable(importContext?.targetTableId);
+        if (!source || !target) return;
+        const selectedIds = $$('[data-import-column]:checked', $('#importFields')).map((input) => input.value);
+        if (!selectedIds.length) { showToast('Select at least one field to import', true); return; }
+        const makeLink = $('#importMakeLink').checked && !$('#importMakeLink').disabled;
+        const sourcePrimary = source.columns.find((column) => column.primary);
+        if (makeLink && !sourcePrimary) { showToast('The source table needs a primary key first', true); return; }
+        if (makeLink && !selectedIds.includes(sourcePrimary.id)) { showToast(`Include ${sourcePrimary.name} to create the relationship`, true); return; }
+
+        const imported = [];
+        selectedIds.forEach((columnId) => {
+          const sourceColumn = getColumn(source.id, columnId);
+          if (!sourceColumn) return;
+          const copy = {
+            id: makeId('col'),
+            name: uniqueColumnName(target, sourceColumn.name),
+            type: sourceColumn.type,
+            primary: false,
+            importedFrom: { tableId: source.id, columnId: sourceColumn.id }
+          };
+          target.columns.push(copy);
+          imported.push({ sourceColumn, copy });
+        });
+        if (makeLink) {
+          const linked = imported.find((entry) => entry.sourceColumn.id === sourcePrimary.id);
+          if (linked) state.relationships.push({ id: makeId('rel'), sourceTableId: source.id, sourceColumnId: sourcePrimary.id, targetTableId: target.id, targetColumnId: linked.copy.id, cardinality: '1:N', label: 'references' });
+        }
+        selectedTableId = target.id;
+        persist('fields imported');
+        closeModals();
+        render();
+        showToast(`${imported.length} field${imported.length === 1 ? '' : 's'} imported into ${target.name}`);
+      }
+
+      function addRelationship() {
+        const sourceTableId = $('#relationSourceTable').value;
+        const sourceColumnId = $('#relationSourceColumn').value;
+        const targetTableId = $('#relationTargetTable').value;
+        const targetColumnId = $('#relationTargetColumn').value;
+        if (!sourceTableId || !sourceColumnId || !targetTableId || !targetColumnId) { showToast('Choose a table and field on both sides', true); return; }
+        if (sourceTableId === targetTableId && sourceColumnId === targetColumnId) { showToast('A field cannot relate to itself', true); return; }
+        const duplicate = state.relationships.some((rel) => rel.sourceTableId === sourceTableId && rel.sourceColumnId === sourceColumnId && rel.targetTableId === targetTableId && rel.targetColumnId === targetColumnId);
+        if (duplicate) { showToast('That relationship already exists', true); return; }
+        state.relationships.push({ id: makeId('rel'), sourceTableId, sourceColumnId, targetTableId, targetColumnId, cardinality: $('#relationCardinality').value, label: $('#relationLabel').value.trim() || 'related to' });
+        selectedTableId = targetTableId;
+        persist('relationship added');
+        closeModals();
+        render();
+        showToast('Relationship drawn between the selected fields');
+      }
+
+      function deleteRelationship(relationId) {
+        const relation = state.relationships.find((rel) => rel.id === relationId);
+        state.relationships = state.relationships.filter((rel) => rel.id !== relationId);
+        if (highlightedRelationId === relationId) highlightedRelationId = null;
+        persist('relationship removed');
+        render();
+        if (relation) showToast('Relationship removed');
+      }
+
+      function toggleConnectMode() {
+        connectMode = !connectMode;
+        connectSelection = [];
+        render();
+        showToast(connectMode ? 'Connect mode: pick a source card' : 'Connect mode closed');
+      }
+
+      function pickConnectTable(tableId) {
+        if (!connectMode) return;
+        if (connectSelection.includes(tableId)) return;
+        connectSelection.push(tableId);
+        if (connectSelection.length === 1) {
+          render();
+          showToast('Now pick the target card');
+        } else {
+          const sourceTableId = connectSelection[0];
+          const targetTableId = connectSelection[1];
+          connectMode = false;
+          connectSelection = [];
+          openRelationshipModal({ sourceTableId, targetTableId });
+          render();
+        }
+      }
+
+      function focusTable(tableId) {
+        const card = $(`.table-card[data-table-id="${cssEscape(tableId)}"]`);
+        if (!card) return;
+        const scroll = $('#boardScroll');
+        const left = card.offsetLeft - Math.max(16, (scroll.clientWidth - card.offsetWidth) / 2);
+        const top = card.offsetTop - Math.max(16, (scroll.clientHeight - card.offsetHeight) / 2);
+        scroll.scrollTo({ left: Math.max(0, left), top: Math.max(0, top), behavior: 'smooth' });
+      }
+
+      function fitView() {
+        if (!state.tables.length) return;
+        const scroll = $('#boardScroll');
+        const minX = Math.min(...state.tables.map((table) => table.x));
+        const minY = Math.min(...state.tables.map((table) => table.y));
+        const maxX = Math.max(...state.tables.map((table) => table.x + 390));
+        const maxY = Math.max(...state.tables.map((table) => table.y + 400));
+        const contentWidth = Math.max(1, maxX - minX);
+        const contentHeight = Math.max(1, maxY - minY);
+        scroll.scrollTo({ left: Math.max(0, minX - (scroll.clientWidth - contentWidth) / 2), top: Math.max(0, minY - (scroll.clientHeight - contentHeight) / 2), behavior: 'smooth' });
+      }
+
+      function clearBoard() {
+        if (!state.tables.length) return;
+        if (!window.confirm('Clear every table and relationship from this board?')) return;
+        state = { tables: [], relationships: [] };
+        selectedTableId = null;
+        connectMode = false;
+        connectSelection = [];
+        highlightedRelationId = null;
+        persist('board cleared');
+        render();
+        showToast('Canvas cleared');
+      }
+
+      function resetDemo() {
+        if (JSON.stringify(state) !== JSON.stringify(DEMO_STATE) && !window.confirm('Restore the example schema and replace the current board?')) return;
+        state = clone(DEMO_STATE);
+        selectedTableId = state.tables[0].id;
+        connectMode = false;
+        connectSelection = [];
+        highlightedRelationId = null;
+        persist('sample restored');
+        render();
+        showToast('Sample schema restored');
+      }
+
+      function exportJson() {
+        const payload = { ...clone(state), exportedAt: new Date().toISOString(), app: 'Schema Studio — Access database planner' };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'schema-studio-export.json';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(link.href);
+        showToast('Schema JSON exported');
+      }
+
+      function handleAction(action, element) {
+        const tableId = element.dataset.tableId;
+        switch (action) {
+          case 'open-add-table': openAddTableModal(); break;
+          case 'close-modal': closeModals(); break;
+          case 'select-table':
+            selectedTableId = tableId;
+            render();
+            if (element.closest('.table-index')) focusTable(tableId);
+            break;
+          case 'focus-selected': focusTable(selectedTableId); break;
+          case 'add-column': addColumn(tableId); break;
+          case 'delete-column': deleteColumn(tableId, element.dataset.columnId); break;
+          case 'toggle-primary': {
+            const column = getColumn(tableId, element.dataset.columnId);
+            if (column) { column.primary = !column.primary; persist('key updated'); render(); }
+            break;
+          }
+          case 'delete-table': deleteTable(tableId); break;
+          case 'open-import': openImportModal(tableId); break;
+          case 'open-relationship': openRelationshipModal(); break;
+          case 'toggle-connect': toggleConnectMode(); break;
+          case 'delete-relationship': deleteRelationship(element.dataset.relationId); break;
+          case 'fit-view': fitView(); break;
+          case 'clear-board': clearBoard(); break;
+          case 'reset-demo': resetDemo(); break;
+          case 'export-json': exportJson(); break;
+          default: break;
+        }
+      }
+
+      function startDrag(event, card) {
+        if (connectMode || event.target.closest('input, select, button')) return;
+        const table = getTable(card.dataset.tableId);
+        if (!table) return;
+        event.preventDefault();
+        selectedTableId = table.id;
+        dragState = { tableId: table.id, startX: event.clientX, startY: event.clientY, originX: table.x, originY: table.y, card, pointerId: event.pointerId, moved: false };
+        card.classList.add('is-dragging');
+        try { $('#boardCanvas').setPointerCapture(event.pointerId); } catch (error) { /* pointer capture is optional */ }
+      }
+
+      function moveDrag(event) {
+        if (!dragState) return;
+        const table = getTable(dragState.tableId);
+        if (!table) return;
+        const dx = event.clientX - dragState.startX;
+        const dy = event.clientY - dragState.startY;
+        if (Math.abs(dx) + Math.abs(dy) > 3) dragState.moved = true;
+        table.x = Math.max(20, Math.round(dragState.originX + dx));
+        table.y = Math.max(20, Math.round(dragState.originY + dy));
+        dragState.card.style.left = `${table.x}px`;
+        dragState.card.style.top = `${table.y}px`;
+        drawConnections();
+      }
+
+      function endDrag() {
+        if (!dragState) return;
+        dragState.card.classList.remove('is-dragging');
+        lastDragMoved = dragState.moved;
+        if (dragState.moved) {
+          persist('position saved');
+          render();
+        } else {
+          renderSidebar();
+        }
+        dragState = null;
+      }
+
+      $('#boardCanvas').addEventListener('pointerdown', (event) => {
+        const handle = event.target.closest('[data-drag-handle]');
+        const card = event.target.closest('.table-card');
+        if (handle && card) startDrag(event, card);
+      });
+      $('#boardCanvas').addEventListener('pointermove', moveDrag);
+      $('#boardCanvas').addEventListener('pointerup', endDrag);
+      $('#boardCanvas').addEventListener('pointercancel', endDrag);
+
+      document.addEventListener('click', (event) => {
+        const swatch = event.target.closest('.swatch');
+        if (swatch) {
+          $$('.swatch').forEach((item) => item.classList.remove('is-selected'));
+          swatch.classList.add('is-selected');
+          return;
+        }
+
+        const actionElement = event.target.closest('[data-action]');
+        if (actionElement) {
+          handleAction(actionElement.dataset.action, actionElement);
+          return;
+        }
+
+        const relationItem = event.target.closest('.relation-item');
+        if (relationItem) {
+          highlightedRelationId = relationItem.dataset.relationId;
+          renderSidebar();
+          drawConnections();
+          return;
+        }
+
+        const card = event.target.closest('.table-card');
+        if (card) {
+          if (lastDragMoved) { lastDragMoved = false; return; }
+          if (connectMode && !event.target.closest('input, select, button')) {
+            pickConnectTable(card.dataset.tableId);
+          } else if (!event.target.closest('input, select, button')) {
+            selectedTableId = card.dataset.tableId;
+            render();
+          }
+        }
+      });
+
+      document.addEventListener('change', (event) => {
+        const target = event.target;
+        if (target.matches('[data-field="table-name"]')) {
+          const table = getTable(target.dataset.tableId);
+          if (table && target.value.trim()) { table.name = target.value.trim(); persist('table name saved'); render(); }
+        }
+        if (target.matches('[data-field="column-name"]')) {
+          const column = getColumn(target.dataset.tableId, target.dataset.columnId);
+          if (column && target.value.trim()) { column.name = target.value.trim(); persist('field name saved'); render(); }
+        }
+        if (target.matches('[data-field="column-type"]')) {
+          const column = getColumn(target.dataset.tableId, target.dataset.columnId);
+          if (column) { column.type = target.value; persist('field type saved'); render(); }
+        }
+        if (target.id === 'importSourceTable') renderImportFields();
+        if (target.id === 'relationSourceTable') { populateColumnSelect($('#relationSourceColumn'), target.value); updateRelationshipPreview(); }
+        if (target.id === 'relationTargetTable') { populateColumnSelect($('#relationTargetColumn'), target.value); updateRelationshipPreview(); }
+        if (target.id === 'relationSourceColumn' || target.id === 'relationTargetColumn') updateRelationshipPreview();
+      });
+
+      $('#tableSearch').addEventListener('input', renderSidebar);
+      $('#tableForm').addEventListener('submit', (event) => {
+        event.preventDefault();
+        const name = $('#newTableName').value.trim();
+        if (!name) return;
+        const selectedSwatch = $('.swatch.is-selected')?.dataset.color || COLORS[0];
+        createTable(name, selectedSwatch);
+      });
+      $('#importForm').addEventListener('submit', (event) => { event.preventDefault(); importFields(); });
+      $('#relationshipForm').addEventListener('submit', (event) => { event.preventDefault(); addRelationship(); });
+
+      document.addEventListener('mouseover', (event) => {
+        const item = event.target.closest('.relation-item');
+        if (!item) return;
+        highlightedRelationId = item.dataset.relationId;
+        drawConnections();
+      });
+      document.addEventListener('mouseout', (event) => {
+        const item = event.target.closest('.relation-item');
+        if (!item || item.contains(event.relatedTarget)) return;
+        highlightedRelationId = null;
+        drawConnections();
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          if ($$('.modal-backdrop:not([hidden])').length) closeModals();
+          else if (connectMode) toggleConnectMode();
+        }
+        if (event.target.matches('input, textarea, select')) return;
+        if (event.key.toLowerCase() === 'a') openAddTableModal();
+        if (event.key.toLowerCase() === 'r') openRelationshipModal();
+      });
+      window.addEventListener('resize', drawConnections);
+      window.addEventListener('scroll', drawConnections, true);
+
+      renderSwatches(COLORS[0]);
+      render();
+    })();
+  </script>
+</body>
+</html>
