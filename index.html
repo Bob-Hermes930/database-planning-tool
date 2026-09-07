@@ -68,6 +68,30 @@
     .app-shell.is-canvas-only .main-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); height: 100%; }
     .app-shell.is-canvas-only .board-shell { grid-column: 1; grid-row: 1; grid-template-rows: minmax(0, 1fr); height: 100%; min-height: 0; }
 
+    .canvas-only-exit {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 12;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 44px;
+      padding: 0 13px;
+      color: #edf7f6;
+      background: rgba(18, 34, 56, .92);
+      border: 1px solid rgba(225, 241, 240, .2);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-float);
+      font-size: 12px;
+      font-weight: 800;
+      backdrop-filter: blur(8px);
+    }
+    .canvas-only-exit.is-visible { display: inline-flex; }
+    .canvas-only-exit:hover { background: #27405f; }
+    .canvas-only-exit .button-icon { font-size: 18px; line-height: 0; }
+
     .topbar {
       z-index: 10;
       display: grid;
@@ -595,6 +619,8 @@
     </main>
   </div>
 
+  <button class="canvas-only-exit" type="button" data-action="toggle-canvas-only" id="canvasOnlyExitButton" aria-label="Exit canvas-only mode" title="Exit canvas-only mode"><span class="button-icon">↙</span><span>Exit canvas</span></button>
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <div class="modal-backdrop" id="tableModal" hidden>
@@ -862,10 +888,13 @@
       function updateCanvasOnlyUi() {
         const shell = $('.app-shell');
         const button = $('#canvasOnlyButton');
+        const exitButton = $('#canvasOnlyExitButton');
         shell.classList.toggle('is-canvas-only', canvasOnly);
         button.setAttribute('aria-pressed', String(canvasOnly));
         button.classList.toggle('is-active', canvasOnly);
         button.title = canvasOnly ? 'Show the workspace chrome (Esc)' : 'Show only the canvas (Esc to exit)';
+        exitButton.classList.toggle('is-visible', canvasOnly);
+        exitButton.setAttribute('aria-hidden', String(!canvasOnly));
       }
 
       function updateZoomUi() {

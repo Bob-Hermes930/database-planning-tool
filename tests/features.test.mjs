@@ -11,6 +11,12 @@ test('provides a canvas-only mode that hides the surrounding navigation chrome',
   assert.match(html, /event\.key === ['"]Escape['"]/);
 });
 
+test('keeps a touch-friendly exit control available in canvas-only mode', () => {
+  assert.match(html, /id="canvasOnlyExitButton"/);
+  assert.match(html, /class="canvas-only-exit"/);
+  assert.match(html, /canvas-only-exit\.is-visible/);
+});
+
 test('provides zoom controls and gesture handlers for the canvas', () => {
   assert.match(html, /id="boardCanvasStage"/);
   assert.match(html, /data-action="zoom-in"/);
