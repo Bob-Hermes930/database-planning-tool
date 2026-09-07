@@ -487,6 +487,7 @@
       .brand-mark { width: 32px; height: 32px; }
       .topbar-actions .button { min-height: 34px; padding: 0 9px; font-size: 10px; }
       .topbar-actions .button:not(.primary) { display: none; }
+      .topbar-actions .button[data-action="import-json"] { display: inline-flex; }
       .topbar-actions .button[data-action="export-image"] { display: inline-flex; }
       .main-grid { grid-template-rows: 610px 250px; height: auto; }
       .board-shell { grid-template-rows: auto minmax(0, 1fr); height: 610px; min-height: 0; }
@@ -537,12 +538,14 @@
         <span class="save-state" id="saveState">saved locally</span>
       </div>
       <div class="topbar-actions">
+        <button class="button dark" type="button" data-action="import-json" title="Import a JSON plan from a file"><span class="button-icon">↑</span><span class="button-label">Import</span></button>
         <button class="button dark" type="button" data-action="export-json" title="Download the current schema as JSON"><span class="button-icon">↓</span><span class="button-label">Export</span></button>
         <button class="button dark" type="button" data-action="export-image" title="Download all tables and relationships as a PNG image"><span class="button-icon">▧</span><span class="button-label">Image</span></button>
         <button class="button dark" type="button" data-action="reset-demo" title="Restore the example schema">Demo</button>
         <button class="button dark" type="button" data-action="clear-board" title="Remove all tables">Clear</button>
         <button class="button primary" type="button" data-action="open-add-table"><span class="button-icon">＋</span><span class="button-label">Add table</span></button>
       </div>
+      <input id="importJsonInput" type="file" accept=".json,application/json" hidden aria-label="Choose a JSON plan to import">
     </header>
 
     <main class="main-grid">
@@ -1446,6 +1449,146 @@
         showToast('Sample schema restored');
       }
 
+      function normalizeImportedState(payload) {
+        const candidate = payload && typeof payload === 'object' && payload.state && typeof payload.state === 'object' && !Array.isArray(payload.state) ? payload.state : payload;
+        if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate) || !Array.isArray(candidate.tables) || !Array.isArray(candidate.relationships)) {
+          throw new Error('JSON must contain “tables” and “relationships” arrays.');
+        }
+
+        const tableIds = new Set();
+        const columnKeys = new Set();
+        const tables = candidate.tables.map((rawTable, tableIndex) => {
+          if (!rawTable || typeof rawTable !== 'object' || Array.isArray(rawTable)) throw new Error(`Table ${rawTable?.name || tableIndex + 1} is invalid.`);
+          const tableId = typeof rawTable.id === 'string' ? rawTable.id.trim() : '';
+          const tableName = typeof rawTable.name === 'string' ? rawTable.name.trim() : '';
+          if (!tableId || !tableName) throw new Error(`Table ${tableIndex + 1} needs an id and name.`);
+          if (tableIds.has(tableId)) throw new Error(`Duplicate table id “${tableId}”.`);
+          if (!Array.isArray(rawTable.columns)) throw new Error(`Table “${tableName}” needs a columns array.`);
+          tableIds.add(tableId);
+
+          const columns = rawTable.columns.map((rawColumn, columnIndex) => {
+            if (!rawColumn || typeof rawColumn !== 'object' || Array.isArray(rawColumn)) throw new Error(`Column ${columnIndex + 1} in “${tableName}” is invalid.`);
+            const columnId = typeof rawColumn.id === 'string' ? rawColumn.id.trim() : '';
+            const columnName = typeof rawColumn.name === 'string' ? rawColumn.name.trim() : '';
+            const columnType = typeof rawColumn.type === 'string' ? rawColumn.type.trim() : '';
+            const columnKey = `${tableId}\\u0000${columnId}`;
+            if (!columnId || !columnName) throw new Error(`A column in “${tableName}” needs an id and name.`);
+            if (columnKeys.has(columnKey)) throw new Error(`Duplicate column id “${columnId}” in “${tableName}”.`);
+            if (!ACCESS_TYPES.some((type) => type.value === columnType)) throw new Error(`Column “${columnName}” in “${tableName}” uses an unsupported Access type.`);
+            columnKeys.add(columnKey);
+
+            let importedFrom;
+            if (rawColumn.importedFrom !== undefined && rawColumn.importedFrom !== null) {
+              if (!rawColumn.importedFrom || typeof rawColumn.importedFrom !== 'object' || Array.isArray(rawColumn.importedFrom)) throw new Error(`Column “${columnName}” has an invalid import source.`);
+              const sourceTableId = typeof rawColumn.importedFrom.tableId === 'string' ? rawColumn.importedFrom.tableId.trim() : '';
+              const sourceColumnId = typeof rawColumn.importedFrom.columnId === 'string' ? rawColumn.importedFrom.columnId.trim() : '';
+              if (!sourceTableId || !sourceColumnId) throw new Error(`Column “${columnName}” has an incomplete import source.`);
+              importedFrom = { tableId: sourceTableId, columnId: sourceColumnId };
+            }
+
+            return {
+              id: columnId,
+              name: columnName,
+              type: columnType,
+              primary: rawColumn.primary === true,
+              ...(importedFrom ? { importedFrom } : {})
+            };
+          });
+
+          const fallbackColor = COLORS[tableIndex % COLORS.length];
+          const color = typeof rawTable.color === 'string' && /^#[0-9a-f]{6}$/i.test(rawTable.color) ? rawTable.color : fallbackColor;
+          const x = Number(rawTable.x);
+          const y = Number(rawTable.y);
+          return {
+            id: tableId,
+            name: tableName,
+            x: Number.isFinite(x) ? Math.max(0, Math.round(x)) : 30 + (tableIndex % 3) * 540,
+            y: Number.isFinite(y) ? Math.max(0, Math.round(y)) : 180 + Math.floor(tableIndex / 3) * 430,
+            color,
+            description: typeof rawTable.description === 'string' ? rawTable.description.trim().slice(0, 240) : 'A working table definition on the whiteboard.',
+            columns
+          };
+        });
+
+        const hasColumn = (tableId, columnId) => columnKeys.has(`${tableId}\\u0000${columnId}`);
+        tables.forEach((table) => table.columns.forEach((column) => {
+          if (column.importedFrom && (!tableIds.has(column.importedFrom.tableId) || !hasColumn(column.importedFrom.tableId, column.importedFrom.columnId))) {
+            throw new Error(`Column “${column.name}” in “${table.name}” references a missing import source.`);
+          }
+        }));
+
+        const relationIds = new Set();
+        const relationships = candidate.relationships.map((rawRelation, relationIndex) => {
+          if (!rawRelation || typeof rawRelation !== 'object' || Array.isArray(rawRelation)) throw new Error(`Relationship ${relationIndex + 1} is invalid.`);
+          const id = typeof rawRelation.id === 'string' ? rawRelation.id.trim() : '';
+          const sourceTableId = typeof rawRelation.sourceTableId === 'string' ? rawRelation.sourceTableId.trim() : '';
+          const sourceColumnId = typeof rawRelation.sourceColumnId === 'string' ? rawRelation.sourceColumnId.trim() : '';
+          const targetTableId = typeof rawRelation.targetTableId === 'string' ? rawRelation.targetTableId.trim() : '';
+          const targetColumnId = typeof rawRelation.targetColumnId === 'string' ? rawRelation.targetColumnId.trim() : '';
+          const cardinality = typeof rawRelation.cardinality === 'string' ? rawRelation.cardinality.trim() : '1:N';
+          if (!id || !sourceTableId || !sourceColumnId || !targetTableId || !targetColumnId) throw new Error(`Relationship ${relationIndex + 1} is missing an id or endpoint.`);
+          if (relationIds.has(id)) throw new Error(`Duplicate relationship id “${id}”.`);
+          if (!tableIds.has(sourceTableId) || !hasColumn(sourceTableId, sourceColumnId) || !tableIds.has(targetTableId) || !hasColumn(targetTableId, targetColumnId)) throw new Error(`Relationship “${id}” references a missing table or field.`);
+          if (sourceTableId === targetTableId && sourceColumnId === targetColumnId) throw new Error(`Relationship “${id}” cannot connect a field to itself.`);
+          if (!['1:1', '1:N', 'N:1', 'N:N'].includes(cardinality)) throw new Error(`Relationship “${id}” uses an unsupported cardinality.`);
+          relationIds.add(id);
+          return {
+            id,
+            sourceTableId,
+            sourceColumnId,
+            targetTableId,
+            targetColumnId,
+            cardinality,
+            label: (typeof rawRelation.label === 'string' ? rawRelation.label.trim().slice(0, 64) : '') || 'related to'
+          };
+        });
+
+        return { tables, relationships };
+      }
+
+      function openJsonImportPicker() {
+        const input = $('#importJsonInput');
+        if (!input) return;
+        input.value = '';
+        input.click();
+      }
+
+      function importJsonFile(file) {
+        if (!file) return;
+        const input = $('#importJsonInput');
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const payload = JSON.parse(String(reader.result || ''));
+            const importedState = normalizeImportedState(payload);
+            if ((state.tables.length || state.relationships.length) && !window.confirm(`Import “${file.name}” and replace the current board?`)) return;
+            cancelDrag();
+            state = importedState;
+            selectedTableId = state.tables[0]?.id || null;
+            connectMode = false;
+            connectSelection = [];
+            highlightedRelationId = null;
+            zoom = 1;
+            persist('plan imported');
+            render();
+            $('#boardScroll').scrollTo({ left: 0, top: 0, behavior: 'auto' });
+            const tableWord = state.tables.length === 1 ? 'table' : 'tables';
+            const relationWord = state.relationships.length === 1 ? 'relationship' : 'relationships';
+            showToast(`Imported ${state.tables.length} ${tableWord} and ${state.relationships.length} ${relationWord}`);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : 'The file could not be read.';
+            showToast(`Could not import plan: ${message}`, true);
+          } finally {
+            if (input) input.value = '';
+          }
+        };
+        reader.onerror = () => {
+          if (input) input.value = '';
+          showToast('Could not read that JSON file', true);
+        };
+        reader.readAsText(file);
+      }
+
       function exportJson() {
         const payload = { ...clone(state), exportedAt: new Date().toISOString(), app: 'Schema Studio — Access database planner' };
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -1658,6 +1801,7 @@
           case 'toggle-canvas-only': toggleCanvasOnly(); break;
           case 'clear-board': clearBoard(); break;
           case 'reset-demo': resetDemo(); break;
+          case 'import-json': openJsonImportPicker(); break;
           case 'export-json': exportJson(); break;
           case 'export-image': exportImage(); break;
           default: break;
@@ -1838,6 +1982,9 @@
       });
 
       $('#tableSearch').addEventListener('input', renderSidebar);
+      $('#importJsonInput').addEventListener('change', (event) => {
+        importJsonFile(event.target.files?.[0]);
+      });
       $('#tableForm').addEventListener('submit', (event) => {
         event.preventDefault();
         const name = $('#newTableName').value.trim();

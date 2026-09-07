@@ -33,3 +33,19 @@ test('exports the complete board as a downloadable image', () => {
   assert.match(html, /schema-studio-board\.png/);
   assert.match(html, /state\.relationships/);
 });
+
+test('provides a browser file picker for importing JSON plans', () => {
+  assert.match(html, /data-action="import-json"/);
+  assert.match(html, /id="importJsonInput"/);
+  assert.match(html, /type="file"/);
+  assert.match(html, /accept="\.json,application\/json"/);
+  assert.match(html, /function openJsonImportPicker\s*\(/);
+  assert.match(html, /function importJsonFile\s*\(/);
+});
+
+test('validates an imported plan before replacing the current board', () => {
+  assert.match(html, /function normalizeImportedState\s*\(/);
+  assert.match(html, /Array\.isArray\(candidate\.tables\)/);
+  assert.match(html, /Array\.isArray\(candidate\.relationships\)/);
+  assert.match(html, /replace the current board/i);
+});
